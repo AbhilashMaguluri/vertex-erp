@@ -1,0 +1,20 @@
+{
+  "name": "scms-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Student Counselling Management System (SCMS)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:backend": "cd apps/backend && uvicorn app.main:app --reload --port 8000",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,74 @@
+from datetime import date, datetime
+from typing import List, Optional
+from pydantic import BaseModel, Field
+
+
+class StudentAttendanceItem(BaseModel):
+    student_id: str
+    status: str = Field("PRESENT", description="PRESENT, ABSENT, ON_DUTY, MEDICAL_LEAVE")
+
+
+class BulkAttendanceCreate(BaseModel):
+    subject_id: str
+    date: date
+    records: List[StudentAttendanceItem]
+
+
+class AttendanceRecordResponse(BaseModel):
+    id: str
+    student_id: str
+    subject_id: str
+    date: date
+    status: str
+    recorded_by: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SubjectAttendanceSummary(BaseModel):
+    subject_id: str
+    subject_code: str
+    subject_name: str
+    total_classes: int
+    attended_classes: int  # PRESENT + ON_DUTY
+    percentage: float
+
+
+class StudentAttendanceSummaryResponse(BaseModel):
+    student_id: str
+    overall_percentage: float
+    subject_summaries: List[SubjectAttendanceSummary]
+
+
+class DefaulterResponse(BaseModel):
+    student_id: str
+    student_name: str
+    roll_number: str
+    department_name: str
+    subject_code: str
+    attendance_percentage: float
+    alert_level: str  # WARNING (<80%), DEFAULTER (<75%), CRITICAL (<65%)
+
+
+class CorrectionRequestCreate(BaseModel):
+    attendance_record_id: str
+    new_status: str = Field(..., description="PRESENT, ABSENT, ON_DUTY, MEDICAL_LEAVE")
+    reason: str = Field(..., min_length=5, description="Reason for correction")
+
+
+class CorrectionResponse(BaseModel):
+    id: str
+    attendance_record_id: str
+    student_id: str
+    requested_by: str
+    old_status: str
+    new_status: str
+    reason: str
+    approval_status: str
+    reviewed_by: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
