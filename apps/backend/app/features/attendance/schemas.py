@@ -36,10 +36,27 @@ class SubjectAttendanceSummary(BaseModel):
     percentage: float
 
 
+class MonthlyAttendancePoint(BaseModel):
+    """One month of the attendance trend. Months with no classes recorded are
+    absent from the series rather than plotted as 0% — a holiday month is not
+    a month of total absence."""
+
+    month: str  # ISO year-month, e.g. "2026-07"
+    label: str  # "Jul 2026"
+    total_classes: int
+    attended_classes: int
+    percentage: float
+
+
 class StudentAttendanceSummaryResponse(BaseModel):
     student_id: str
-    overall_percentage: float
+    # None means "no classes recorded yet", which is NOT the same as 100%.
+    # A student with an empty record must not be shown as fully present.
+    overall_percentage: Optional[float] = None
+    total_classes: int = 0
+    attended_classes: int = 0
     subject_summaries: List[SubjectAttendanceSummary]
+    monthly_trend: List[MonthlyAttendancePoint] = []
 
 
 class DefaulterResponse(BaseModel):

@@ -47,33 +47,74 @@ class User(Base, AuditMixin):
     __tablename__ = "users"
 
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    # The short identifier the institution already uses for this person — a
+    # student's roll number, a staff member's `firstname.initial`. Login accepts
+    # it in place of the email so a bulk-provisioned student can sign in with
+    # the roll number printed on their credential slip. Nullable because
+    # accounts predating Office Import (and the bootstrap Admin) have none.
+    username: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    department_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    department_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=True),
+        # use_alter breaks the users<->departments circular FK (Department.hod_user_id
+        # references users.id): this constraint is deferred to a post-creation
+        # ALTER TABLE so SQLAlchemy's DDL sorter (create_all/drop_all) doesn't raise
+        # CircularDependencyError. Matches the equivalent split already applied by
+        # hand in the initial Alembic migration.
+        ForeignKey("departments.id", ondelete="SET NULL", use_alter=True, name="fk_users_department_id_departments"),
+        nullable=True,
+    )
+
+    # Provisioning & first-login flow. Every account created by an Admin
+    # starts with this set to True; login stays gated to /auth/change-password
+    # until it is cleared. Never settable by the user themselves except by
+    # successfully changing their password.
+    force_password_change: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     roles: Mapped[List[Role]] = relationship("Role", secondary=user_roles, back_populates="users")
-    refresh_tokens: Mapped[List["RefreshToken"]] = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    refresh_tokens: Mapped[List["RefreshToken"]] = relationship(
+        "RefreshToken", back_populates="user", cascade="all, delete-orphan", foreign_keys="RefreshToken.user_id"
+    )
 
     @property
     def full_name(self) -> str:
-        return f"{self.first_name} {self.last_name}"
+        # Stripped: a staff name written as a single word ("Ravindra") has no
+        # surname to append, and must not render with a trailing space.
+        return f"{self.first_name} {self.last_name}".strip()
 
 
 class RefreshToken(Base, TimestampMixin):
+    """A row per issued refresh token == a browser session. Rotation-family
+    based reuse detection: reusing an already-rotated (used) or revoked token
+    revokes every token in that family, killing the whole session chain."""
+
     __tablename__ = "refresh_tokens"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    secret_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     family_id: Mapped[str] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    is_revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    remember_me: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    user_agent: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    user: Mapped[User] = relationship("User", back_populates="refresh_tokens")
+    user: Mapped[User] = relationship("User", back_populates="refresh_tokens", foreign_keys=[user_id])
+
+    @property
+    def is_active(self) -> bool:
+        return (
+            self.used_at is None
+            and self.revoked_at is None
+            and self.expires_at > datetime.now(timezone.utc)
+        )
 
 
 class PasswordResetToken(Base, TimestampMixin):
@@ -81,6 +122,6 @@ class PasswordResetToken(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    is_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    secret_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

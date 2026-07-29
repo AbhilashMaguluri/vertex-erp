@@ -1,12 +1,13 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
 class AuditLogResponse(BaseModel):
-    id: str
+    id: UUID | str
     timestamp: datetime
-    user_id: Optional[str] = None
+    user_id: Optional[UUID | str] = None
     user_email: Optional[str] = None
     user_role: Optional[str] = None
     action: str

@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 from app.shared.models.base import TimestampMixin
-from app.core.enums import NotificationType, NotificationPriority
+from app.core.enums import NotificationCategory, NotificationType, NotificationPriority
 
 
 class Notification(Base, TimestampMixin):
@@ -16,6 +16,9 @@ class Notification(Base, TimestampMixin):
     user_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     type: Mapped[str] = mapped_column(String(50), default=NotificationType.SYSTEM.value, nullable=False)
+    # Stored, not derived at read time, so re-mapping a type later cannot
+    # retroactively re-file notifications that were already delivered.
+    category: Mapped[str] = mapped_column(String(40), default=NotificationCategory.SYSTEM.value, nullable=False, index=True)
     priority: Mapped[str] = mapped_column(String(30), default=NotificationPriority.NORMAL.value, nullable=False, index=True)
     
     title: Mapped[str] = mapped_column(String(200), nullable=False)

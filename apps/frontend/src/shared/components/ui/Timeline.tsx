@@ -69,7 +69,7 @@ const eventColors: Record<string, string> = {
   [TimelineEventType.ATTENDANCE_CRITICAL]: 'bg-red-100 text-red-700 border-red-200',
   [TimelineEventType.BACKLOG_ADDED]: 'bg-red-100 text-red-700 border-red-200',
   [TimelineEventType.BACKLOG_CLEARED]: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  [TimelineEventType.SESSION_CONDUCTED]: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  [TimelineEventType.SESSION_CONDUCTED]: 'bg-brand-100 text-brand-700 border-brand-200',
   [TimelineEventType.PARENT_COMMUNICATION]: 'bg-teal-100 text-teal-700 border-teal-200',
   [TimelineEventType.RISK_FLAG_CHANGED]: 'bg-purple-100 text-purple-700 border-purple-200',
 };

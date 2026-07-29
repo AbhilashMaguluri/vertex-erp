@@ -17,6 +17,12 @@ class Student(Base, AuditMixin):
     registration_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     date_of_birth: Mapped[date] = mapped_column(Date, nullable=False)
     batch_year: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # MALE / FEMALE / OTHER. Nullable: existing rows predate the column and
+    # the value is student-maintained, so it is legitimately unknown until
+    # they fill in their personal information.
+    gender: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    photo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     
     status: Mapped[str] = mapped_column(String(30), default=StudentStatus.ACTIVE.value, nullable=False)
     risk_level: Mapped[str] = mapped_column(String(30), default=RiskLevel.NONE.value, nullable=False)
@@ -24,25 +30,20 @@ class Student(Base, AuditMixin):
     department_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="RESTRICT"), nullable=False, index=True)
     current_semester_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=True), ForeignKey("semesters.id", ondelete="SET NULL"), nullable=True)
 
-    # Parent / Guardian Info
-    father_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    father_phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    father_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    mother_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    mother_phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    mother_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    guardian_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    guardian_phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    guardian_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    guardian_relation: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    
-    address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    emergency_contact: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    # Family, contact and address details are NOT here — they are
+    # student-maintained and live on student_profiles (see profile_models.py).
+    # Keeping them off this table is what makes "a student may not write
+    # anything on `students`" a structural rule rather than a per-endpoint
+    # convention. The two exceptions above (gender, photo_url) stay because
+    # institution-wide rosters and dashboards aggregate them.
 
     # Relationships
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
     enrollments: Mapped[List["StudentEnrollment"]] = relationship("StudentEnrollment", back_populates="student", cascade="all, delete-orphan")
     counsellor_assignments: Mapped[List["CounsellorAssignment"]] = relationship("CounsellorAssignment", back_populates="student", cascade="all, delete-orphan")
+    profile: Mapped[Optional["StudentProfile"]] = relationship(
+        "StudentProfile", uselist=False, cascade="all, delete-orphan"
+    )
 
 
 class StudentEnrollment(Base, TimestampMixin):
@@ -68,3 +69,46 @@ class CounsellorAssignment(Base, TimestampMixin):
 
     student: Mapped[Student] = relationship("Student", back_populates="counsellor_assignments")
     counsellor: Mapped["User"] = relationship("User", foreign_keys=[counsellor_id])
+
+
+class AcademicCorrectionRequest(Base, TimestampMixin):
+    __tablename__ = "academic_correction_requests"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    student_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE"), nullable=False, index=True)
+    counsellor_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    section_name: Mapped[str] = mapped_column(String(60), nullable=False, index=True)
+    current_value: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    proposed_value: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    document_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL"), nullable=True)
+
+    status: Mapped[str] = mapped_column(String(30), default="SUBMITTED", nullable=False, index=True)
+    counsellor_remarks: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reviewed_by_user_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    student: Mapped[Student] = relationship("Student", foreign_keys=[student_id])
+    counsellor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[counsellor_id])
+    document: Mapped[Optional["StudentDocument"]] = relationship("StudentDocument", foreign_keys=[document_id])
+    logs: Mapped[List["AcademicCorrectionLog"]] = relationship("AcademicCorrectionLog", back_populates="request", cascade="all, delete-orphan", order_by="AcademicCorrectionLog.created_at.asc()")
+
+
+class AcademicCorrectionLog(Base):
+    __tablename__ = "academic_correction_logs"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("academic_correction_requests.id", ondelete="CASCADE"), nullable=False, index=True)
+    actor_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+    from_status: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(30), nullable=False)
+    remarks: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    document_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    request: Mapped[AcademicCorrectionRequest] = relationship("AcademicCorrectionRequest", back_populates="logs")
+    actor: Mapped["User"] = relationship("User", foreign_keys=[actor_id])
+    document: Mapped[Optional["StudentDocument"]] = relationship("StudentDocument", foreign_keys=[document_id])
+

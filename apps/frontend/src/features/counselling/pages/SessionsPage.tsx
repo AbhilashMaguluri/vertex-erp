@@ -2,14 +2,15 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { counsellingService, CounsellingSession, ActionItem } from '../services/counselling.service';
-import { AppShell } from '@/shared/components/layout/AppShell';
 import { PageHeader } from '@/shared/components/ui/PageHeader';
 import { Breadcrumbs } from '@/shared/components/ui/Breadcrumbs';
 import { Button } from '@/shared/components/ui/Button';
 import { Badge } from '@/shared/components/ui/Badge';
 import { Skeleton } from '@/shared/components/ui/Skeleton';
 import { EmptyState } from '@/shared/components/ui/EmptyState';
-import { MessageSquare, Plus, CheckCircle, Clock } from 'lucide-react';
+import { Card, CardContent } from '@/shared/components/ui/Card';
+import { MessageSquare, Plus, CheckCircle2, Clock, Calendar } from 'lucide-react';
+import { cn } from '@/shared/utils/cn';
 
 export function SessionsPage() {
   const navigate = useNavigate();
@@ -28,12 +29,12 @@ export function SessionsPage() {
   });
 
   return (
-    <AppShell userRole="COUNSELLOR" userName="Dr. Priya Sharma">
-      <Breadcrumbs items={[{ label: 'Counselling Workspace', href: '/counselling' }, { label: 'Sessions' }]} />
+    <>
+      <Breadcrumbs items={[{ label: 'Counselling' }, { label: 'Sessions & Tasks' }]} />
 
       <PageHeader
         title="Counselling Sessions & Follow-ups"
-        subtitle="Manage counselling records, session observations, and action item tracking"
+        subtitle="Record session notes, student observations, risk flags, and follow-up action items"
         actions={
           <Button size="sm" onClick={() => navigate('/counselling/new')}>
             <Plus className="mr-1.5 h-4 w-4" /> Record New Session
@@ -41,14 +42,15 @@ export function SessionsPage() {
         }
       />
 
-      <div className="flex border-b border-border my-6 gap-6 text-sm font-medium">
+      <div className="flex border-b border-border my-6 gap-2 text-xs font-semibold select-none pb-1">
         <button
           onClick={() => setActiveTab('sessions')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
+          className={cn(
+            'px-3.5 py-2.5 rounded-lg flex items-center gap-2 transition-all cursor-pointer',
             activeTab === 'sessions'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+              ? 'bg-primary text-primary-foreground font-bold shadow-xs'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+          )}
         >
           <MessageSquare className="h-4 w-4" />
           Sessions History
@@ -56,11 +58,12 @@ export function SessionsPage() {
 
         <button
           onClick={() => setActiveTab('follow-ups')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
+          className={cn(
+            'px-3.5 py-2.5 rounded-lg flex items-center gap-2 transition-all cursor-pointer',
             activeTab === 'follow-ups'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+              ? 'bg-primary text-primary-foreground font-bold shadow-xs'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+          )}
         >
           <Clock className="h-4 w-4" />
           Follow-up Action Items
@@ -71,31 +74,39 @@ export function SessionsPage() {
         <div>
           {sessionsLoading ? (
             <div className="space-y-3">
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
+              <Skeleton className="h-24 rounded-xl" />
+              <Skeleton className="h-24 rounded-xl" />
+              <Skeleton className="h-24 rounded-xl" />
             </div>
           ) : !sessions || sessions.length === 0 ? (
             <EmptyState
               icon={MessageSquare}
               title="No Counselling Sessions Recorded"
-              description="Record your first session with an assigned student."
+              description="Record your first session with an assigned student to track observations and guidance."
               actionLabel="Record Session"
               onAction={() => navigate('/counselling/new')}
             />
           ) : (
             <div className="space-y-4">
               {sessions.map((session) => (
-                <div key={session.id} className="rounded-lg border bg-card p-4 shadow-2xs hover:border-primary/50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">Session #{session.id.slice(0, 8)}</span>
-                      <Badge variant="outline">{session.session_type}</Badge>
-                      <Badge variant="secondary">{session.mode}</Badge>
+                <Card key={session.id} className="hover:border-primary/40">
+                  <CardContent className="p-5 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-foreground">Session #{session.id.slice(0, 8)}</span>
+                        <Badge variant="default">{session.session_type}</Badge>
+                        <Badge variant="outline">{session.mode}</Badge>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+                        <Calendar className="h-3.5 w-3.5" />
+                        <span>{session.session_date}</span>
+                      </div>
                     </div>
-                    <time className="text-xs text-muted-foreground">{session.session_date}</time>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{session.observations}</p>
-                </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {session.observations}
+                    </p>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
@@ -105,28 +116,34 @@ export function SessionsPage() {
       {activeTab === 'follow-ups' && (
         <div>
           {followUpsLoading ? (
-            <Skeleton className="h-32" />
+            <Skeleton className="h-48 rounded-xl" />
           ) : !followUps || followUps.length === 0 ? (
             <EmptyState
-              icon={CheckCircle}
+              icon={CheckCircle2}
               title="No Pending Action Items"
-              description="All follow-up tasks are completed or none assigned."
+              description="All follow-up tasks and student check-ins are up to date."
             />
           ) : (
             <div className="space-y-3">
               {followUps.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg bg-card">
-                  <div>
-                    <p className="text-sm font-medium">{item.description}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Due: {item.due_date}</p>
-                  </div>
-                  <Badge variant={item.status === 'OVERDUE' ? 'danger' : 'warning'}>{item.status}</Badge>
-                </div>
+                <Card key={item.id}>
+                  <CardContent className="p-4 flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-foreground">{item.description}</p>
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> Due by: {item.due_date}
+                      </p>
+                    </div>
+                    <Badge variant={item.status === 'OVERDUE' ? 'destructive' : 'warning'}>
+                      {item.status}
+                    </Badge>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

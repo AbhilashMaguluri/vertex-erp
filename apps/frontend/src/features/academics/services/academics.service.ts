@@ -31,12 +31,54 @@ export interface BacklogItem {
   subject_id: string;
   subject_code?: string;
   subject_name?: string;
-  attempts_count: number;
+  semester_id: string;
   status: string;
+  cleared_at_semester_id?: string;
+  cleared_date?: string;
   created_at: string;
 }
 
+export interface SubjectResultRow {
+  subject_id: string;
+  subject_code: string;
+  subject_name: string;
+  credits: number;
+  mid_1?: number | null;
+  mid_2?: number | null;
+  internal?: number | null;
+  external?: number | null;
+  total_obtained?: number | null;
+  total_max?: number | null;
+  percentage?: number | null;
+  grade?: string | null;
+  result: 'PASS' | 'FAIL' | 'IN_PROGRESS';
+}
+
+export interface SemesterResultBlock {
+  semester_id: string;
+  semester_name: string;
+  semester_number: number;
+  subjects: SubjectResultRow[];
+  sgpa?: number | null;
+  cgpa?: number | null;
+  total_credits?: number | null;
+  active_backlogs: number;
+}
+
+export interface StudentAcademicRecord {
+  student_id: string;
+  cgpa?: number | null;
+  latest_sgpa?: number | null;
+  total_active_backlogs: number;
+  semesters: SemesterResultBlock[];
+}
+
 export const academicsService = {
+  getStudentRecord: async (studentId: string): Promise<StudentAcademicRecord> => {
+    const res = await api.get<StudentAcademicRecord>(`/academics/student/${studentId}/record`);
+    return res.data;
+  },
+
   recordBulkMarks: async (data: BulkMarksCreateData): Promise<MarkRecord[]> => {
     const res = await api.post<MarkRecord[]>('/marks', data);
     return res.data;

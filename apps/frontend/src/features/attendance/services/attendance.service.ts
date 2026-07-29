@@ -30,10 +30,23 @@ export interface SubjectAttendanceSummary {
   percentage: number;
 }
 
+export interface MonthlyAttendancePoint {
+  month: string;
+  label: string;
+  total_classes: number;
+  attended_classes: number;
+  percentage: number;
+}
+
 export interface StudentAttendanceSummary {
   student_id: string;
-  overall_percentage: number;
+  /** null when no classes have been recorded yet — which is NOT 100%.
+   *  Every consumer must render "Not recorded" rather than a figure. */
+  overall_percentage: number | null;
+  total_classes: number;
+  attended_classes: number;
   subject_summaries: SubjectAttendanceSummary[];
+  monthly_trend: MonthlyAttendancePoint[];
 }
 
 export const attendanceService = {

@@ -21,7 +21,15 @@ class CounsellingSession(Base, TimestampMixin):
     mode: Mapped[str] = mapped_column(String(50), default=SessionMode.IN_PERSON.value, nullable=False)
     
     observations: Mapped[str] = mapped_column(Text, nullable=False)
-    
+    recommendations: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    student_commitments: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Counsellor/Admin-only narrative. Distinct from `confidential` (which
+    # marks the WHOLE session sensitive): these notes are stripped from every
+    # student-facing response unconditionally — see
+    # CounsellingService._to_response.
+    confidential_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     follow_up_required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     follow_up_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     

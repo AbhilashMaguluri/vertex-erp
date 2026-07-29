@@ -1,12 +1,14 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import List, Optional
+from uuid import UUID
 from pydantic import BaseModel
 
 
 class NotificationResponse(BaseModel):
-    id: str
-    user_id: str
+    id: UUID | str
+    user_id: UUID | str
     type: str
+    category: str
     priority: str
     title: str
     message: str
@@ -21,3 +23,17 @@ class NotificationResponse(BaseModel):
 
 class NotificationUnreadCountResponse(BaseModel):
     unread_count: int
+
+
+class CategoryCount(BaseModel):
+    category: str
+    total: int
+    unread: int
+
+
+class NotificationSummaryResponse(BaseModel):
+    """Per-category counts for the notification centre's filter rail."""
+
+    unread_count: int
+    total_count: int
+    categories: List[CategoryCount] = []

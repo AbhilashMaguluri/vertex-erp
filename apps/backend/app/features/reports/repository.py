@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.reports.models import ReportRecord
@@ -21,3 +21,8 @@ class ReportRepository:
         )
         res = await self.db.execute(query)
         return list(res.scalars().all())
+
+    async def get_report_by_id(self, report_id: str) -> Optional[ReportRecord]:
+        query = select(ReportRecord).where(ReportRecord.id == report_id)
+        res = await self.db.execute(query)
+        return res.scalar_one_or_none()

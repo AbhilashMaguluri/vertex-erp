@@ -1,7 +1,8 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.academics.models import Mark, SGPAHistory, Backlog
+from app.features.admin.models import Semester, Subject
 
 
 class AcademicsRepository:
@@ -20,7 +21,7 @@ class AcademicsRepository:
         if existing:
             existing.marks_obtained = mark.marks_obtained
             existing.max_marks = mark.max_marks
-            existing.recorded_by = mark.recorded_by
+            existing.recorded_by_user_id = mark.recorded_by_user_id
             return existing
         else:
             self.db.add(mark)
@@ -32,6 +33,30 @@ class AcademicsRepository:
             query = query.where(Mark.semester_id == semester_id)
         res = await self.db.execute(query)
         return list(res.scalars().all())
+
+    async def get_student_marks_detailed(self, student_id: str) -> List[Any]:
+        """Every recorded mark for a student, already joined to its subject and
+        semester so the transcript can be assembled without a per-row lookup."""
+        query = (
+            select(
+                Mark.assessment_type,
+                Mark.marks_obtained,
+                Mark.max_marks,
+                Subject.id.label("subject_id"),
+                Subject.code.label("subject_code"),
+                Subject.name.label("subject_name"),
+                Subject.credits,
+                Semester.id.label("semester_id"),
+                Semester.name.label("semester_name"),
+                Semester.number.label("semester_number"),
+            )
+            .join(Subject, Subject.id == Mark.subject_id)
+            .join(Semester, Semester.id == Mark.semester_id)
+            .where(Mark.student_id == student_id)
+            .order_by(Semester.number, Subject.code)
+        )
+        res = await self.db.execute(query)
+        return list(res.all())
 
     async def save_sgpa_history(self, sgpa_entry: SGPAHistory) -> SGPAHistory:
         query = select(SGPAHistory).where(
@@ -56,7 +81,7 @@ class AcademicsRepository:
         return list(res.scalars().all())
 
     async def get_student_backlogs(self, student_id: str) -> List[Backlog]:
-        query = select(Backlog).where(Backlog.student_id == student_id, Backlog.deleted_at.is_(None))
+        query = select(Backlog).where(Backlog.student_id == student_id)
         res = await self.db.execute(query)
         return list(res.scalars().all())
 
@@ -64,3 +89,12 @@ class AcademicsRepository:
         self.db.add(backlog)
         await self.db.flush()
         return backlog
+
+    async def list_all_sgpa_histories(self) -> List[SGPAHistory]:
+        res = await self.db.execute(select(SGPAHistory))
+        return list(res.scalars().all())
+
+    async def list_all_active_backlogs(self) -> List[Backlog]:
+        query = select(Backlog).where(Backlog.status == "ACTIVE")
+        res = await self.db.execute(query)
+        return list(res.scalars().all())

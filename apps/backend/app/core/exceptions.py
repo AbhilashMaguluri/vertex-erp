@@ -47,6 +47,13 @@ class ForbiddenError(AppException):
         super().__init__(message, status_code=status.HTTP_403_FORBIDDEN, code="FORBIDDEN", details=details)
 
 
+class PasswordChangeRequiredError(AppException):
+    def __init__(self, message: str = "Password change required before continuing", details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message, status_code=status.HTTP_403_FORBIDDEN, code="PASSWORD_CHANGE_REQUIRED", details=details
+        )
+
+
 class ConflictError(AppException):
     def __init__(self, message: str = "Resource conflict", details: Optional[Dict[str, Any]] = None):
         super().__init__(message, status_code=status.HTTP_409_CONFLICT, code="CONFLICT", details=details)

@@ -7,6 +7,22 @@ from alembic import context
 from app.config import settings
 from app.database import Base
 
+# Import every feature's models module so Base.metadata is fully populated
+# before autogenerate runs. Routers aren't imported here (unlike app.main)
+# to keep this import graph minimal and side-effect free.
+from app.features.auth import models as _auth_models  # noqa: F401
+from app.features.admin import models as _admin_models  # noqa: F401
+from app.features.students import models as _students_models  # noqa: F401
+from app.features.students import profile_models as _student_profile_models  # noqa: F401
+from app.features.counselling import models as _counselling_models  # noqa: F401
+from app.features.attendance import models as _attendance_models  # noqa: F401
+from app.features.academics import models as _academics_models  # noqa: F401
+from app.features.parents import models as _parents_models  # noqa: F401
+from app.features.notifications import models as _notifications_models  # noqa: F401
+from app.features.reports import models as _reports_models  # noqa: F401
+from app.features.audit import models as _audit_models  # noqa: F401
+from app.features.imports import models as _imports_models  # noqa: F401
+
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 

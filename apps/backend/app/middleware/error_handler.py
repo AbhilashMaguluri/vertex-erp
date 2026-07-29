@@ -26,7 +26,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     request_id = getattr(request.state, "request_id", None)
     details = []
     for err in exc.errors():
-        field_path = " -> ".join([str(p) for p in err.get("loc", []) if p != "body"])
+        # Dot-joined so it lines up 1:1 with a react-hook-form field path
+        # (e.g. "student_details.roll_number") for client-side error mapping.
+        field_path = ".".join([str(p) for p in err.get("loc", []) if p != "body"])
         details.append({
             "field": field_path,
             "code": err.get("type", "INVALID"),

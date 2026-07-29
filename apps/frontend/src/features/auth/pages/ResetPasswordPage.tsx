@@ -50,13 +50,13 @@ export function ResetPasswordPage() {
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-xl font-bold tracking-tight">Set New Password</CardTitle>
           <CardDescription>
-            Enter a new password for your SCMS account
+            Enter a new password for your VVIT Counselling Portal account
           </CardDescription>
         </CardHeader>
 
         {isSuccess ? (
           <CardContent className="space-y-4 pt-4 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 ring-8 ring-emerald-500/5">
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <p className="text-sm font-semibold">Password Reset Successful!</p>
@@ -71,7 +71,7 @@ export function ResetPasswordPage() {
           <form onSubmit={handleSubmit(onSubmit)}>
             <CardContent className="space-y-4 pt-4">
               {errorMessage && (
-                <div className="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-xs font-medium text-destructive">
+                <div className="flex items-center gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs font-medium text-rose-600 dark:text-rose-400">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{errorMessage}</span>
                 </div>

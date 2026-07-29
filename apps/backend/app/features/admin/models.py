@@ -24,8 +24,13 @@ class Section(Base, AuditMixin):
     __tablename__ = "sections"
 
     department_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="CASCADE"), nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g. CSE-A
-    batch_year: Mapped[int] = mapped_column(Integer, nullable=False)  # e.g. 2024
+    name: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g. A
+    # Study year within the department's 4-year program (1st..4th) — the
+    # level the Academic Configuration hierarchy groups sections under.
+    # Nullable so pre-existing rows created before this column don't need a
+    # backfill; new sections always set it (see SectionCreate).
+    year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    batch_year: Mapped[int] = mapped_column(Integer, nullable=False)  # e.g. 2024 — admission/intake batch
 
     department: Mapped[Department] = relationship("Department", back_populates="sections")
 
@@ -38,20 +43,23 @@ class AcademicYear(Base, AuditMixin):
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     is_current: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    semesters: Mapped[List["Semester"]] = relationship("Semester", back_populates="academic_year", cascade="all, delete-orphan")
-
 
 class Semester(Base, AuditMixin):
+    """A fixed, institution-wide catalog of program semesters (1-1 .. 4-2).
+
+    Not scoped to a particular AcademicYear — the same 8 rows are seeded once
+    (see app/scripts/seed.py) and reused every year, so there is no
+    create/update API for this entity.
+    """
+
     __tablename__ = "semesters"
 
-    academic_year_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("academic_years.id", ondelete="CASCADE"), nullable=False, index=True)
-    number: Mapped[int] = mapped_column(Integer, nullable=False)  # Semester 1 to 8
-    name: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g. Fall 2026 / Semester 5
-    start_date: Mapped[date] = mapped_column(Date, nullable=False)
-    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    academic_year_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=True), ForeignKey("academic_years.id", ondelete="SET NULL"), nullable=True, index=True)
+    number: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)  # 1 to 8
+    name: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g. 1-1, 4-2
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     is_current: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-
-    academic_year: Mapped[AcademicYear] = relationship("AcademicYear", back_populates="semesters")
 
 
 class Subject(Base, AuditMixin):

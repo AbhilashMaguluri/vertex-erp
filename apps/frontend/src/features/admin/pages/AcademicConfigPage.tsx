@@ -1,195 +1,281 @@
 import * as React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { adminService, Department, Subject, AcademicYear } from '../services/admin.service';
-import { AppShell } from '@/shared/components/layout/AppShell';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { adminService, Department, Section, Subject, AcademicYear } from '../services/admin.service';
+import { AddAcademicConfigModal, AcademicConfigKind } from '../components/AddAcademicConfigModal';
+import { EditAcademicConfigModal, AcademicConfigRecord } from '../components/EditAcademicConfigModal';
+import { DepartmentHierarchyCard } from '../components/DepartmentHierarchyCard';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { PageHeader } from '@/shared/components/ui/PageHeader';
 import { Breadcrumbs } from '@/shared/components/ui/Breadcrumbs';
 import { Button } from '@/shared/components/ui/Button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/shared/components/ui/Card';
+import { Badge } from '@/shared/components/ui/Badge';
+import { Modal } from '@/shared/components/ui/Modal';
 import { Skeleton } from '@/shared/components/ui/Skeleton';
 import { EmptyState } from '@/shared/components/ui/EmptyState';
-import { BookOpen, Building2, Calendar, Plus } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Building2, Calendar, CheckCircle2, Pencil, Plus } from 'lucide-react';
+import { cn } from '@/shared/utils/cn';
 
 export function AcademicConfigPage() {
-  const [activeTab, setActiveTab] = React.useState<'departments' | 'academic-years' | 'subjects'>('departments');
+  const [addModal, setAddModal] = React.useState<{ kind: AcademicConfigKind; presetDepartmentId?: string; presetYear?: number } | null>(null);
+  const [editing, setEditing] = React.useState<{ kind: AcademicConfigKind; record: AcademicConfigRecord } | null>(null);
+  const [deletingSection, setDeletingSection] = React.useState<Section | null>(null);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
+
+  const canManageDepartment = hasPermission('department.manage');
+  const canManageSection = hasPermission('section.manage');
+  const canManageSubject = hasPermission('subject.manage');
+  const canManageAcademicYear = hasPermission('academic.manage');
+
+  React.useEffect(() => {
+    if (!successMessage) return;
+    const timer = setTimeout(() => setSuccessMessage(null), 4000);
+    return () => clearTimeout(timer);
+  }, [successMessage]);
 
   const { data: departments, isLoading: deptsLoading, isError: deptsError } = useQuery<Department[]>({
     queryKey: ['admin', 'departments'],
     queryFn: adminService.getDepartments,
-    enabled: activeTab === 'departments',
+  });
+
+  const { data: sections } = useQuery<Section[]>({
+    queryKey: ['admin', 'sections'],
+    queryFn: () => adminService.getSections(),
+  });
+
+  const { data: subjects } = useQuery<Subject[]>({
+    queryKey: ['admin', 'subjects'],
+    queryFn: () => adminService.getSubjects(),
   });
 
   const { data: academicYears, isLoading: ayLoading } = useQuery<AcademicYear[]>({
     queryKey: ['admin', 'academic-years'],
     queryFn: adminService.getAcademicYears,
-    enabled: activeTab === 'academic-years',
   });
 
-  const { data: subjects, isLoading: subjectsLoading } = useQuery<Subject[]>({
-    queryKey: ['admin', 'subjects'],
-    queryFn: () => adminService.getSubjects(),
-    enabled: activeTab === 'subjects',
+  const deleteSectionMutation = useMutation({
+    mutationFn: (id: string) => adminService.deleteSection(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'sections'] });
+      setDeletingSection(null);
+      setDeleteError(null);
+      setSuccessMessage('Section deleted successfully.');
+    },
+    onError: (err: any) => {
+      setDeleteError(err?.response?.data?.error?.message || 'Could not delete this section. Please try again.');
+    },
   });
+
+  const successLabels: Record<AcademicConfigKind, string> = {
+    departments: 'Department',
+    'academic-years': 'Academic year',
+    subjects: 'Subject',
+    sections: 'Section',
+  };
+
+  const currentAcademicYear = academicYears?.find((a) => a.is_current) ?? academicYears?.[0];
 
   return (
-    <AppShell userRole="ADMIN" userName="System Admin">
-      <Breadcrumbs items={[{ label: 'Administration', href: '/admin' }, { label: 'Academic Configuration' }]} />
-      
+    <>
+      <Breadcrumbs items={[{ label: 'Administration' }, { label: 'Academic Configuration' }]} />
+
       <PageHeader
         title="Academic Configuration"
-        subtitle="Manage departments, sections, subjects, academic years, and semesters"
+        subtitle="Configure the full academic structure — Academic Year, Departments, Study Years, Sections, and Subjects — in one guided hierarchy."
         actions={
-          <Button size="sm">
-            <Plus className="mr-1.5 h-4 w-4" /> Add {activeTab.slice(0, -1)}
-          </Button>
+          canManageDepartment && (
+            <Button size="sm" onClick={() => setAddModal({ kind: 'departments' })}>
+              <Plus className="mr-1.5 h-4 w-4" /> Add Department
+            </Button>
+          )
         }
       />
 
-      {/* Tabs */}
-      <div className="flex border-b border-border my-6 gap-6 text-sm font-medium">
-        <button
-          onClick={() => setActiveTab('departments')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
-            activeTab === 'departments'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Building2 className="h-4 w-4" />
-          Departments
-        </button>
-
-        <button
-          onClick={() => setActiveTab('academic-years')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
-            activeTab === 'academic-years'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Calendar className="h-4 w-4" />
-          Academic Years
-        </button>
-
-        <button
-          onClick={() => setActiveTab('subjects')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
-            activeTab === 'subjects'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <BookOpen className="h-4 w-4" />
-          Subjects
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      {activeTab === 'departments' && (
-        <div>
-          {deptsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Skeleton className="h-32" />
-              <Skeleton className="h-32" />
-              <Skeleton className="h-32" />
-            </div>
-          ) : deptsError ? (
-            <div className="p-6 text-center text-destructive text-sm">Failed to load departments.</div>
-          ) : !departments || departments.length === 0 ? (
-            <EmptyState
-              icon={Building2}
-              title="No Departments Found"
-              description="Create departments to organize students, faculty, and subjects."
-              actionLabel="Add Department"
-              onAction={() => {}}
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {departments.map((dept) => (
-                <Card key={dept.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary">
-                        {dept.code}
-                      </span>
-                    </div>
-                    <CardTitle className="text-base mt-2">{dept.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground">
-                      {dept.description || 'No description provided.'}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+      {successMessage && (
+        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3.5 text-xs font-semibold text-emerald-600">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          {successMessage}
         </div>
       )}
 
-      {activeTab === 'academic-years' && (
-        <div>
-          {ayLoading ? (
-            <Skeleton className="h-48" />
-          ) : !academicYears || academicYears.length === 0 ? (
-            <EmptyState
-              icon={Calendar}
-              title="No Academic Years Configured"
-              description="Setup academic years to define semester schedules."
-              actionLabel="Add Academic Year"
-              onAction={() => {}}
-            />
-          ) : (
-            <div className="space-y-3">
-              {academicYears.map((ay) => (
-                <div key={ay.id} className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                  <div>
-                    <span className="font-semibold text-sm">{ay.name}</span>
-                    <span className="text-xs text-muted-foreground ml-3">
-                      ({ay.start_date} to {ay.end_date})
-                    </span>
-                  </div>
-                  {ay.is_current && (
-                    <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">
-                      Active Year
-                    </span>
-                  )}
+      {/* --- Level 1: Academic Year --- */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            <h2 className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">Academic Year</h2>
+          </div>
+          {canManageAcademicYear && (
+            <Button variant="ghost" size="sm" onClick={() => setAddModal({ kind: 'academic-years' })} className="h-7 px-2 text-[11px] text-primary hover:bg-primary/10">
+              <Plus className="mr-1 h-3 w-3" /> Add Academic Year
+            </Button>
+          )}
+        </div>
+
+        {ayLoading ? (
+          <Skeleton className="h-16 rounded-xl" />
+        ) : !academicYears || academicYears.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title="No Academic Years Configured"
+            description="Create an academic year to anchor the department structure beneath it."
+            actionLabel={canManageAcademicYear ? 'Add Academic Year' : undefined}
+            onAction={canManageAcademicYear ? () => setAddModal({ kind: 'academic-years' }) : undefined}
+          />
+        ) : (
+          <div className="flex gap-2.5 overflow-x-auto pb-1">
+            {academicYears.map((ay) => (
+              <div
+                key={ay.id}
+                className={cn(
+                  'group flex shrink-0 items-center gap-2.5 rounded-xl border px-4 py-2.5 shadow-xs',
+                  ay.is_current ? 'border-primary/40 bg-primary/5' : 'border-border/70 bg-card/80'
+                )}
+              >
+                <div>
+                  <p className="text-xs font-bold text-foreground">{ay.name}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono">{ay.start_date} → {ay.end_date}</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                {ay.is_current && <Badge variant="success" dot className="text-[9px]">Current</Badge>}
+                {canManageAcademicYear && (
+                  <button
+                    onClick={() => setEditing({ kind: 'academic-years', record: ay })}
+                    className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label={`Edit ${ay.name}`}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
-      {activeTab === 'subjects' && (
-        <div>
-          {subjectsLoading ? (
-            <Skeleton className="h-48" />
-          ) : !subjects || subjects.length === 0 ? (
-            <EmptyState
-              icon={BookOpen}
-              title="No Subjects Configured"
-              description="Add course subjects with credits and exam grading schemes."
-              actionLabel="Add Subject"
-              onAction={() => {}}
-            />
-          ) : (
-            <div className="rounded-md border bg-card divide-y">
-              {subjects.map((sub) => (
-                <div key={sub.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <span className="font-mono text-xs font-bold text-primary mr-2">{sub.code}</span>
-                    <span className="font-medium text-sm">{sub.name}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Credits: <span className="font-semibold text-foreground">{sub.credits}</span>
-                  </div>
-                </div>
-              ))}
+      {/* --- Levels 2-5: Department -> Study Year -> Sections -> Subjects --- */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <Building2 className="h-4 w-4 text-primary" />
+          <h2 className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
+            Department Structure {currentAcademicYear ? `· ${currentAcademicYear.name}` : ''}
+          </h2>
+        </div>
+
+        {deptsLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+          </div>
+        ) : deptsError ? (
+          <div className="flex items-center gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs font-semibold text-rose-600">
+            Failed to load departments data.
+          </div>
+        ) : !departments || departments.length === 0 ? (
+          <EmptyState
+            icon={Building2}
+            title="No Departments Configured"
+            description="Create your first department to start building its years, sections, and subject catalog."
+            actionLabel={canManageDepartment ? 'Add Department' : undefined}
+            onAction={canManageDepartment ? () => setAddModal({ kind: 'departments' }) : undefined}
+          />
+        ) : (
+          <div className="space-y-4">
+            {departments.map((dept) => (
+              <DepartmentHierarchyCard
+                key={dept.id}
+                department={dept}
+                sections={(sections ?? []).filter((s) => s.department_id === dept.id)}
+                subjects={(subjects ?? []).filter((s) => s.department_id === dept.id)}
+                canManageDepartment={canManageDepartment}
+                canManageSection={canManageSection}
+                canManageSubject={canManageSubject}
+                onEditDepartment={() => setEditing({ kind: 'departments', record: dept })}
+                onAddSection={(year) => setAddModal({ kind: 'sections', presetDepartmentId: dept.id, presetYear: year })}
+                onEditSection={(section) => setEditing({ kind: 'sections', record: section })}
+                onDeleteSection={(section) => {
+                  setDeleteError(null);
+                  setDeletingSection(section);
+                }}
+                onAddSubject={() => setAddModal({ kind: 'subjects', presetDepartmentId: dept.id })}
+                onEditSubject={(subject) => setEditing({ kind: 'subjects', record: subject })}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <AddAcademicConfigModal
+        open={!!addModal}
+        kind={addModal?.kind ?? 'departments'}
+        presetDepartmentId={addModal?.presetDepartmentId}
+        presetYear={addModal?.presetYear}
+        departments={departments}
+        sections={sections}
+        subjects={subjects}
+        academicYears={academicYears}
+        onClose={() => setAddModal(null)}
+        onCreated={() => {
+          const kind = addModal?.kind ?? 'departments';
+          setAddModal(null);
+          queryClient.invalidateQueries({ queryKey: ['admin', 'departments'] });
+          queryClient.invalidateQueries({ queryKey: ['admin', 'sections'] });
+          queryClient.invalidateQueries({ queryKey: ['admin', 'subjects'] });
+          queryClient.invalidateQueries({ queryKey: ['admin', 'academic-years'] });
+          setSuccessMessage(`${successLabels[kind]} saved successfully.`);
+        }}
+      />
+
+      <EditAcademicConfigModal
+        open={!!editing}
+        kind={editing?.kind ?? 'departments'}
+        record={editing?.record ?? null}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          const kind = editing?.kind ?? 'departments';
+          setEditing(null);
+          queryClient.invalidateQueries({ queryKey: ['admin', 'departments'] });
+          queryClient.invalidateQueries({ queryKey: ['admin', 'sections'] });
+          queryClient.invalidateQueries({ queryKey: ['admin', 'subjects'] });
+          queryClient.invalidateQueries({ queryKey: ['admin', 'academic-years'] });
+          setSuccessMessage(`${successLabels[kind]} updated successfully.`);
+        }}
+      />
+
+      {deletingSection && (
+        <Modal
+          open={!!deletingSection}
+          onClose={() => setDeletingSection(null)}
+          title="Delete Section"
+          description={`Section ${deletingSection.name} will be permanently removed from this department's structure.`}
+        >
+          {deleteError && (
+            <div className="mb-3 flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-xs font-medium text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{deleteError}</span>
             </div>
           )}
-        </div>
+          <div className="flex items-start gap-2.5 rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>This cannot be undone. Sections with enrolled students cannot be deleted.</span>
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => setDeletingSection(null)} disabled={deleteSectionMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => deleteSectionMutation.mutate(deletingSection.id)}
+              isLoading={deleteSectionMutation.isPending}
+            >
+              Delete Section
+            </Button>
+          </div>
+        </Modal>
       )}
-    </AppShell>
+    </>
   );
 }

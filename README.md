@@ -1,243 +1,236 @@
-# Student Counselling Management System (SCMS) — Enterprise Platform
+# Student Counselling Management System (SCMS) — Enterprise ERP
 
-> **Version:** 2.0.0  
-> **Architecture:** Clean Architecture + Event-Driven Monorepo  
-> **Frontend Stack:** React 19 + TypeScript + Vite + Tailwind CSS v4 + shadcn/ui + TanStack Query  
-> **Backend Stack:** FastAPI (Python 3.12) + Async SQLAlchemy 2.0 + Alembic + Pydantic v2 + PostgreSQL  
+<p align="center">
+  <img src="https://raw.githubusercontent.com/shadcn/ui/main/apps/www/public/og.png" alt="SCMS Banner" width="100%" />
+</p>
 
----
+<p align="center">
+  <b>An Institutional SaaS ERP & Student Relationship Management (SRM) Platform</b><br/>
+  <i>Engineered with Clean Architecture, FastAPI 0.110, React 19, Vite, and PostgreSQL 16.</i>
+</p>
 
-## 🌟 Executive Summary & Vision
-
-The **Student Counselling Management System (SCMS)** is an enterprise-grade SaaS application engineered to replace physical counselling registers, paperwork, and fragmented spreadsheets used across higher-education colleges and universities.
-
-Instead of generic ERP menu systems, SCMS adopts a **workspace-oriented mental model** organized around role-specific environments. The application’s signature feature is the **Student 360° Workspace** — a single unified hub containing attendance trends, academic trajectories, immutable counselling session records, parent call logs, uploaded documents, reports, and risk indicators without context switching.
-
----
-
-## 🏗️ Core Architectural Pillars
-
-1. **Workspace-Oriented Navigation** — Users do not click through menu trees. They enter role-tailored workspaces (Student Workspace, Counsellor Workspace, Faculty Workspace, Department Workspace, Administration Workspace).
-2. **Actionable Dashboards** — Every dashboard prioritizes actionable items:
-   - **🔴 Attention Required** (at-risk students, critical attendance alerts, overdue follow-ups)
-   - **📋 Today's Tasks** (scheduled sessions, callbacks)
-   - **⚡ Quick Actions** (1-click session creation, parent call logging, report generation)
-   - **📈 Insights & Analytics** (trend sparklines, section comparisons)
-   - **🕐 Recent Activity Feed** (chronological event stream)
-3. **Student 360° Workspace (Signature Feature)** — A single unified view featuring 9 tabbed modules:
-   - `Overview` | `Timeline` | `Attendance` | `Academics` | `Counselling` | `Parent Calls` | `Documents` | `Reports` | `Analytics`
-4. **Universal Timeline System** — Chronological event stream for all 20+ domain events (`STUDENT_REGISTERED`, `ATTENDANCE_BELOW_THRESHOLD`, `MARKS_UPDATED`, `SESSION_CONDUCTED`, `RISK_FLAG_CHANGED`, `PARENT_COMMUNICATION`).
-5. **Historical Data Everywhere** — Metrics show time-series trends and sparklines rather than static snapshots.
-6. **Permission-Based RBAC** — Granular permission checks (`student.read`, `counselling.create`, `attendance.correction.approve`) rather than rigid role strings.
-7. **Event-Driven Internal Architecture** — Decoupled modules publish domain events to an in-process `EventBus` consumed by Timeline, Notification, Risk Engine, and Audit subscribers.
-8. **Immutability & Auditability** — Counselling session observations are append-only and cannot be modified or deleted. All models inherit audit metadata (`created_by`, `updated_by`, `version`, `deleted_at`, `archived_at`).
-9. **Multi-Tier Logging** — 6 distinct log streams: Application Logs, Audit Logs, Auth Logs, Security Logs, API Logs, and Background Task Logs.
-10. **Structured 12-Section Settings Architecture** — Profile, Appearance, Notifications, Security, Institution, Academic, Departments, Users, Storage, Audit, Integrations, and System Flags.
+<p align="center">
+  <a href="#-documentation-hub"><img src="https://img.shields.io/badge/Documentation-Complete-009688.svg?style=flat-square&logo=readme&logoColor=white" alt="Documentation" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.12-3776AB.svg?style=flat-square&logo=python&logoColor=white" alt="Python" /></a>
+  <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-0.110-009688.svg?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+  <a href="https://react.dev"><img src="https://img.shields.io/badge/React-19.0-61DAFB.svg?style=flat-square&logo=react&logoColor=white" alt="React" /></a>
+  <a href="https://vitejs.dev"><img src="https://img.shields.io/badge/Vite-5.2-646CFF.svg?style=flat-square&logo=vite&logoColor=white" alt="Vite" /></a>
+  <a href="https://www.postgresql.org"><img src="https://img.shields.io/badge/PostgreSQL-16.0-4169E1.svg?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL" /></a>
+  <a href="https://www.docker.com"><img src="https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=flat-square&logo=docker&logoColor=white" alt="Docker" /></a>
+</p>
 
 ---
 
-## 📁 Monorepo Directory Structure
+## 📌 Quick Links
 
+- [🚀 Quick Start Guide](#-quick-start)
+- [📖 Documentation Hub](#-documentation-hub)
+- [🏢 System Architecture](#-architecture-overview)
+- [🛠️ Tech Stack](#%EF%B8%8F-technology-stack)
+- [🤝 Contributing Guidelines](docs/contributing.md)
+
+---
+
+## 💡 Project Overview
+
+### Problem Statement
+Higher education institutions routinely manage student mentorship, academic counselling, attendance defaulters, and placement readiness using physical paper registers and unencrypted spreadsheets. This leads to lost historical notes during counsellor changes, delayed interventions for at-risk students, and significant compliance deficits during institutional accreditation audits.
+
+### Enterprise Solution
+SCMS is a closed institutional SaaS platform built around Clean Architecture, Event-Driven Domain Notifications, and Role-Based Access Control (RBAC). It unifies Students, Counsellors, Department Heads (HODs), Faculty, and Administrators into role-specific workspaces:
+
+- **Student 360° Workspace**: Consolidated profile combining academic history, attendance metrics, counselling summaries, document vaults, and placement milestones.
+- **Counsellor Caseload Hub**: High-touch workspace featuring risk-level indicators, session scheduling, follow-up trackers, and pre-meeting AI briefings.
+- **Reach Out (SRM) Hub**: Multi-counsellor department topology, student appointment booking, campus emergency hotlines, and real-time communication timeline logging.
+- **Office Import Engine**: Automated 5-step Excel/CSV ingestion pipeline that parses college spreadsheets, validates roll numbers, creates accounts, issues credentials, and exports PDF audit reports.
+- **Vertex AI Engine**: Integrated Server-Sent Events (SSE) streaming assistant providing real-time guidance, pre-meeting briefings, and dynamic UI action triggers.
+
+---
+
+## ✨ Feature Highlights
+
+| Domain | Key Capabilities | Detailed Docs |
+| :--- | :--- | :--- |
+| **🎓 Student 360** | Academic transcripts, SGPA/CGPA calculations, backlog tracking, self-service profile management, document vault, and academic correction workspace. | [`docs/architecture.md`](docs/architecture.md) |
+| **👨‍🏫 Counsellor Desk** | Caseload filtering, attention-required dashboard, append-only session logging, confidential notes, follow-up tracker, and SRM timeline logging. | [`docs/authentication.md`](docs/authentication.md) |
+| **🏢 HOD Supervision** | Department-wide counsellor caseload monitoring, attendance compliance stats, and section academic breakdown. | [`docs/architecture.md`](docs/architecture.md) |
+| **🛠️ Admin Workspace** | Department & academic year hierarchy configuration, user provisioning, session revocation, office import wizard, and audit log viewer. | [`docs/security.md`](docs/security.md) |
+| **🤖 Vertex AI Engine** | SSE streaming LLM assistant (`/api/vertex/message`), Groq / Llama 3.1 provider, student pre-meeting summaries, and dynamic UI action triggers. | [`docs/api.md`](docs/api.md) |
+| **📥 Office Import** | 5-step spreadsheet ingestion pipeline (Analyze → Preview → Configure → Execute → Export Credentials & PDF Audit Reports). | [`docs/api.md`](docs/api.md) |
+| **📞 Reach Out (SRM)** | Department multi-counsellor assignments, student appointment booking, emergency contact hotlines, and channel policy controls. | [`docs/database.md`](docs/database.md) |
+
+---
+
+## 🖼️ Application Screenshot Gallery
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="50%">
+        <img src="https://raw.githubusercontent.com/shadcn/ui/main/apps/www/public/og.png" alt="Student 360 Workspace" /><br/>
+        <b>Student 360 Workspace</b> — <i>Unified academic, attendance, and milestone profile.</i>
+      </td>
+      <td width="50%">
+        <img src="https://raw.githubusercontent.com/shadcn/ui/main/apps/www/public/og.png" alt="Counsellor Workspace" /><br/>
+        <b>Counsellor Caseload Desk</b> — <i>Attention required, risk levels, and follow-ups.</i>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%">
+        <img src="https://raw.githubusercontent.com/shadcn/ui/main/apps/www/public/og.png" alt="Reach Out SRM Hub" /><br/>
+        <b>Reach Out (SRM) Hub</b> — <i>Counsellor persona profiles and emergency hotlines.</i>
+      </td>
+      <td width="50%">
+        <img src="https://raw.githubusercontent.com/shadcn/ui/main/apps/www/public/og.png" alt="Office Import Engine" /><br/>
+        <b>Office Import Engine</b> — <i>5-step spreadsheet parser & credential generator.</i>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## 🏢 Architecture Overview
+
+SCMS is structured into Clean Architecture domain layers across a workspace-oriented monorepo:
+
+```mermaid
+graph TB
+    subgraph Client Layer
+        Web["React 19 + TypeScript + Vite<br/>(Tailwind CSS v4 + TanStack Query)"]
+    end
+
+    subgraph Gateway Layer
+        FastAPI["FastAPI 0.110 Gateway"]
+        Middleware["Middleware Chain<br/>(RequestId -> RateLimit -> CORS -> Auth/RBAC)"]
+    end
+
+    subgraph Service & Storage Layer
+        Services["Domain Services<br/>(Auth, Admin, Student 360, Counselling, SRM, Import, Vertex AI)"]
+        PostgreSQL[("PostgreSQL 16 Database<br/>(SQLAlchemy 2.0 Async + Alembic)")]
+        Cloudinary["Cloudinary API (Storage)"]
+        Resend["Resend API (Email)"]
+        Groq["Groq API (Llama 3.1 LLM)"]
+    end
+
+    Web -->|HTTP / REST / SSE| FastAPI
+    FastAPI --> Middleware
+    Middleware --> Services
+    Services --> PostgreSQL
+    Services --> Cloudinary
+    Services --> Resend
+    Services --> Groq
 ```
-c:\student counsellor\
-├── apps/
-│   ├── frontend/                     # React 19 + TypeScript + Vite + Tailwind CSS v4
-│   │   ├── public/
-│   │   ├── src/
-│   │   │   ├── app/                  # App shell, router, providers
-│   │   │   ├── features/             # Feature-based domain modules
-│   │   │   │   ├── auth/             # Login, ForgotPassword, ResetPassword
-│   │   │   │   ├── admin/            # AcademicConfig (Departments, Subjects, Years)
-│   │   │   │   ├── students/         # Student 360° Workspace
-│   │   │   │   ├── counselling/      # Sessions, Follow-ups, New Session
-│   │   │   │   ├── attendance/       # 3-Click Record Attendance
-│   │   │   │   ├── academics/        # Marks Entry & Backlogs
-│   │   │   │   ├── parents/          # Parent Communication Logs
-│   │   │   │   ├── notifications/    # Notification Center
-│   │   │   │   ├── reports/          # Reports Catalog & Generator
-│   │   │   │   ├── settings/         # 12-Section Settings Architecture
-│   │   │   │   └── audit/            # Multi-Tier Audit Log Viewer
-│   │   │   ├── shared/               # Shared UI design system & primitives
-│   │   │   │   ├── components/
-│   │   │   │   │   ├── ui/           # Button, Badge, Card, Input, Skeleton, Spinner, EmptyState, StatCard, Timeline, PageHeader, Breadcrumbs, Pagination
-│   │   │   │   │   └── layout/       # AppShell, AppHeader, Sidebar
-│   │   │   │   ├── lib/              # Axios instance, TanStack Query client
-│   │   │   │   └── utils/            # cn class merger
-│   │   │   ├── styles/               # Global CSS & design tokens
-│   │   │   └── main.tsx
-│   │   ├── index.html
-│   │   ├── vite.config.ts
-│   │   └── tsconfig.json
-│   │
-│   └── backend/                      # FastAPI Python Application
-│       ├── app/
-│       │   ├── main.py               # FastAPI application factory
-│       │   ├── config.py             # Pydantic BaseSettings
-│       │   ├── database.py           # Async SQLAlchemy 2.0 engine & session pool
-│       │   ├── dependencies.py       # Auth & database dependencies
-│       │   ├── core/
-│       │   │   ├── enums.py          # Unified core Backend Enums module
-│       │   │   ├── security.py       # JWT & bcrypt password hashing
-│       │   │   ├── permissions.py    # Permission-based RBAC checker
-│       │   │   ├── exceptions.py     # AppException hierarchy
-│       │   │   ├── events.py         # Domain Event Bus
-│       │   │   ├── pagination.py     # Pagination utilities
-│       │   │   └── feature_flags.py  # Feature flag service
-│       │   ├── middleware/
-│       │   │   ├── cors.py           # CORS middleware
-│       │   │   ├── request_id.py     # X-Request-ID header tracer
-│       │   │   ├── rate_limit.py     # Sliding window rate limiter
-│       │   │   └── error_handler.py  # Global Error Envelope handler
-│       │   ├── api/v1/
-│       │   │   └── health.py         # Liveness, Readiness, Startup probes
-│       │   ├── features/             # Feature domain modules
-│       │   │   ├── auth/             # User, Role, Permission, JWT Tokens
-│       │   │   ├── admin/            # Department, Section, AcademicYear, Subject
-│       │   │   ├── students/         # Student 360° aggregator & Risk engine
-│       │   │   ├── counselling/      # CounsellingSession (immutable) & ActionItems
-│       │   │   ├── attendance/       # AttendanceRecord & Correction workflow
-│       │   │   ├── academics/        # Mark, SGPAHistory, Backlog
-│       │   │   ├── parents/          # ParentCommunication logs
-│       │   │   ├── notifications/    # Notification Center & events
-│       │   │   ├── reports/          # ReportRecord generator & export
-│       │   │   └── audit/            # AuditLog & SystemSetting
-│       │   └── shared/
-│       │       ├── models/base.py    # AuditMixin, SoftDeleteMixin, Versioning
-│       │       └── utils/idempotency.py # Idempotency key cache
-│       ├── alembic/                  # Database migration scripts
-│       ├── tests/                    # Unit and integration tests
-│       ├── requirements.txt
-│       └── alembic.ini
-│
-├── packages/
-│   └── types/                        # Shared TypeScript + Python Enums & Interfaces
-│       ├── src/
-│       │   ├── enums.ts              # All standardized enums
-│       │   ├── common.ts             # Pagination, ApiError, AuditMetadata
-│       │   └── index.ts
-│       └── package.json
-│
-├── docs/                             # Architecture specs & Developer guide
-│   ├── Architecture.md
-│   └── Contributing.md
-├── docker/                           # Docker Compose & Dockerfiles
-│   ├── docker-compose.yml
-│   ├── Dockerfile.backend
-│   └── Dockerfile.frontend
-├── .env.example
-├── README.md
-└── package.json                      # Monorepo root package.json
-```
+
+*For complete clean architecture specifications, event bus pub/sub designs, and request lifecycle flowcharts, see [`docs/architecture.md`](docs/architecture.md).*
 
 ---
 
 ## 🛠️ Technology Stack
 
-### Frontend Architecture
-- **Framework:** React 19 + TypeScript + Vite
-- **Styling:** Tailwind CSS v4 + custom CSS variables
-- **Primitives:** shadcn/ui (Radix UI base)
-- **Data Fetching:** TanStack Query (React Query v5)
-- **Routing:** React Router v6
-- **Forms & Validation:** React Hook Form + Zod
-- **Icons:** Lucide React
-
-### Backend Architecture
-- **Framework:** FastAPI 0.110+ (Python 3.12)
-- **ORM & Database:** Async SQLAlchemy 2.0 + asyncpg + PostgreSQL 16+
-- **Migrations:** Alembic
-- **Validation:** Pydantic v2 & Pydantic-Settings
-- **Security:** Python-Jose (JWT), Passlib + Bcrypt (Cost factor 12)
-- **Logging & Events:** In-process EventBus, structured JSON loggers
+| Component | Framework / Library | Version | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | React, TypeScript, Vite | `19.0` / `5.4` / `5.2` | Single-page client web application |
+| **Styling** | Tailwind CSS v4, Radix UI | `4.0` / Headless | Accessible UI primitives & design tokens |
+| **State & Forms** | TanStack Query, React Hook Form | `5.28` / `7.51` | Server cache state & Zod validated forms |
+| **Backend API** | FastAPI, Uvicorn | `0.110` / `0.28` | Asynchronous REST & SSE Gateway |
+| **Database** | PostgreSQL, SQLAlchemy, asyncpg | `16.0` / `2.0` / `0.29` | Async ORM mapping & connection pool |
+| **Migrations** | Alembic | `1.13` | Database schema migrations (12 revisions) |
+| **AI Engine** | Groq SDK (Llama-3.1-8b-instant) | `0.9.0` | Vertex AI token streaming & agent tools |
+| **External APIs** | Cloudinary, Resend | `1.36` / `2.0` | Cloud document storage & email delivery |
+| **Containers** | Docker, Docker Compose | Multi-Stage | Production containerized deployment |
 
 ---
 
-## 🚀 Build & Run Commands
+## 🚀 Quick Start
+
+### Prerequisites
+- **Node.js** `v20+` & **npm** `v10+`
+- **Python** `3.12+`
+- **PostgreSQL** `16+`
+
+### 5-Minute Setup
+
+1. **Clone Monorepo & Install Node Dependencies**:
+   ```bash
+   git clone https://github.com/your-org/vertex-erp.git
+   cd vertex-erp
+   npm install
+   ```
+
+2. **Configure Backend Environment**:
+   ```bash
+   cd apps/backend
+   python -m venv venv
+
+   # Activate virtual environment:
+   source venv/bin/activate        # Linux / macOS
+   .\venv\Scripts\Activate.ps1     # Windows PowerShell
+
+   pip install -r requirements.txt
+   cp .env.example .env
+   ```
+   *Edit `apps/backend/.env` and set mandatory keys (`DATABASE_URL`, `JWT_SECRET_KEY`, `CLOUDINARY_*`, `RESEND_API_KEY`, `EMAIL_FROM`).*
+
+3. **Run Migrations & Seed Bootstrap Admin**:
+   ```bash
+   alembic upgrade head
+   python -m app.scripts.seed
+   ```
+
+4. **Launch Local Development Servers**:
+   ```bash
+   # From project root directory:
+   npm run dev:frontend   # React client at http://localhost:5173
+   npm run dev:backend    # FastAPI server at http://localhost:8000
+   ```
+
+---
+
+## 📖 Documentation Hub
+
+For detailed technical specifications, refer to our modular documentation suite under [`/docs`](docs/):
+
+- 📐 **[System Architecture](docs/architecture.md)** — Topology, Clean Architecture layers, ER diagrams, and request lifecycles.
+- 🔌 **[API Reference](docs/api.md)** — Complete endpoint reference for all 158 HTTP REST and SSE routes.
+- 🗄️ **[Database & Migrations](docs/database.md)** — Documentation of 48 database models and 12 Alembic migrations.
+- 🔐 **[Authentication & Authorization](docs/authentication.md)** — User hierarchy, token rotation, and full RBAC permission matrix.
+- ⚙️ **[Environment Variables](docs/environment.md)** — Exhaustive configuration reference table for `.env` settings.
+- 📁 **[Project Structure](docs/project-structure.md)** — Line-by-line annotated monorepo file map.
+- 💻 **[Development Guide](docs/development.md)** — Onboarding rules, coding standards, and guide for adding feature modules.
+- 🐳 **[Production Deployment](docs/deployment.md)** — Docker Compose, Dockerfiles, Nginx SSE buffering, and SSL setup.
+- 🛡️ **[Security & Governance](docs/security.md)** — Password hashing, token theft prevention, rate limiting, and audit logs.
+- 🔧 **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — Common setup pitfalls and diagnostic shell commands.
+- 🗺️ **[Roadmap & Operational Boundaries](docs/roadmap.md)** — Planned features and explicit system boundaries.
+- 🤝 **[Contributing Guidelines](docs/contributing.md)** — 15-point Definition of Done (DoD) & pull request requirements.
+
+---
+
+## 🐳 Production Deployment Overview
+
+Production deployments utilize Docker Compose or containerized Kubernetes pods.
 
 ```bash
-# 1. Build Types Package
-npm run build --workspace=@scms/types
-
-# 2. Build Frontend App (TypeScript + Vite)
-npm run build --workspace=scms-frontend
-
-# 3. Test Backend Python Imports & Startup
-python -c "import app.main; print('Backend loaded successfully!')"
+# Build and launch all services in background
+docker-compose -f docker/docker-compose.yml up -d --build
 ```
 
----
-
-## 🌐 API Endpoint Reference
-
-| Domain | Method | Endpoint | Description | Permission |
-|---|---|---|---|---|
-| **Health** | GET | `/api/v1/health/live` | Liveness probe | Public |
-| | GET | `/api/v1/health/ready` | Readiness probe (DB & Disk) | Public |
-| | GET | `/api/v1/health/startup` | Startup probe | Public |
-| **Auth** | POST | `/api/v1/auth/login` | Login, returns JWT + sets cookie | Public |
-| | POST | `/api/v1/auth/refresh` | Refresh access token | Refresh Cookie |
-| | POST | `/api/v1/auth/logout` | Revoke token family & clear cookie | Authenticated |
-| | GET | `/api/v1/auth/me` | Current profile & permissions | Authenticated |
-| | POST | `/api/v1/auth/forgot-password` | Initiate password reset | Public |
-| | POST | `/api/v1/auth/reset-password` | Complete password reset | Public |
-| **Admin** | POST | `/api/v1/admin/departments` | Create department | `department.manage` |
-| | GET | `/api/v1/admin/departments` | List departments | Authenticated |
-| | POST | `/api/v1/admin/subjects` | Create subject | `subject.manage` |
-| | GET | `/api/v1/admin/subjects` | List subjects | Authenticated |
-| | POST | `/api/v1/admin/users` | Create user account | `user.manage` |
-| **Students** | GET | `/api/v1/students/{id}/workspace` | Get 360° workspace data | `student.read` |
-| | GET | `/api/v1/students/{id}` | Get student profile | `student.read` |
-| | PATCH | `/api/v1/students/{id}/risk` | Update risk flag + emit event | `student.risk.update` |
-| **Counselling** | POST | `/api/v1/counselling/sessions` | Create immutable session (≥50 chars) | `counselling.create` |
-| | GET | `/api/v1/counselling/sessions` | List sessions | `counselling.read` |
-| | GET | `/api/v1/counselling/follow-ups` | List action item follow-ups | `counselling.read` |
-| | POST | `/api/v1/counselling/sessions/{id}/acknowledge` | Student session acknowledgment | `counselling.acknowledge` |
-| **Attendance** | POST | `/api/v1/attendance` | Bulk 3-click attendance record | `attendance.create` |
-| | GET | `/api/v1/attendance/student/{id}` | Student attendance summary | `attendance.read` |
-| | POST | `/api/v1/attendance/corrections` | Request attendance correction | `attendance.correction.create` |
-| | PATCH | `/api/v1/attendance/corrections/{id}` | Approve/reject correction | `attendance.correction.approve` |
-| **Academics** | POST | `/api/v1/marks` | Record bulk marks with max validation | `marks.create` |
-| | GET | `/api/v1/academics/student/{id}/backlogs` | Student backlog list | `academics.read` |
-| | POST | `/api/v1/academics/student/{id}/gpa/calculate` | Compute SGPA/CGPA | `academics.read` |
-| **Parents** | POST | `/api/v1/parent-communication` | Log parent interaction | `parent_communication.create` |
-| | GET | `/api/v1/parent-communication/student/{id}` | Student parent call history | `parent_communication.read` |
-| **Notifications** | GET | `/api/v1/notifications` | List user notifications | Authenticated |
-| | GET | `/api/v1/notifications/unread-count` | Get unread count badge | Authenticated |
-| | PATCH | `/api/v1/notifications/{id}/read` | Mark single notification read | Authenticated |
-| | PATCH | `/api/v1/notifications/read-all` | Mark all notifications read | Authenticated |
-| **Reports** | POST | `/api/v1/reports/generate` | Generate PDF/Excel/CSV report | `report.generate` |
-| | GET | `/api/v1/reports/history` | List generated reports | `report.download` |
-| **Audit & Settings** | GET | `/api/v1/admin/audit-logs` | Query multi-tier audit logs | `audit.read` |
-| | GET | `/api/v1/settings/{section}` | Get 12-section config | `settings.manage` |
-| | PUT | `/api/v1/settings/{section}/{key}` | Update system setting | `settings.manage` |
+For complete Nginx proxy settings (`proxy_buffering off` for SSE), Let's Encrypt SSL instructions, and production checklists, see [`docs/deployment.md`](docs/deployment.md).
 
 ---
 
-## 📝 Changelog
+## 🤝 Contributing
 
-### 2026-07-21
-
-**Fixed:**
-- Fixed npm workspace protocol issue in `apps/frontend/package.json` (`@scms/types: "*"`).
-- Resolved `@hookform/resolvers` dependency missing error in frontend build.
-- Fixed TypeScript compilation errors across all frontend feature pages (`auth.service.ts`, `attendance.service.ts`, `AuditLogsPage.tsx`, `NewSessionPage.tsx`, `LoginPage.tsx`, `MarksEntryPage.tsx`, `AcademicConfigPage.tsx`, `RecordAttendancePage.tsx`, `ParentCommunicationPage.tsx`, `AppHeader.tsx`, `router.tsx`).
-- Created unified core backend enums module (`app/core/enums.py`) resolving Python package import path issues.
-- Fixed `NameError: name 'Optional'` in `app/core/events.py` and `app/features/auth/service.py`.
-- Added missing exception aliases (`UnauthorizedError`, `RateLimitError`) in `app/core/exceptions.py`.
-- Added missing security aliases (`hash_password`, `decode_jwt_token`) in `app/core/security.py`.
-- Fixed missing SQLAlchemy `DateTime` import in `app/features/students/models.py`.
+We welcome contributions! Please review our [Developer Contribution Guidelines](docs/contributing.md) to understand our 15-point Definition of Done (DoD) before submitting pull requests.
 
 ---
 
-## 🔒 Security & Defense-in-Depth
+## 📄 License
 
-- **Token Storage:** Access tokens in memory, Refresh tokens in `HttpOnly`, `SameSite=Lax`, `Secure` cookies.
-- **Refresh Token Family Rotation:** Theft detection with automatic family revocation.
-- **Session Immutability:** Counselling observations are append-only.
-- **Rate Limiting:** Sliding window rate limiting applied globally and strictly on `/auth/login`.
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
 
----
-
-## 📄 License & Attribution
-
-Internal Enterprise Platform — All rights reserved.
+<p align="center">
+  <b>Student Counselling Management System (SCMS) Enterprise Platform</b><br/>
+  <i>Built for Higher Education Institutions.</i>
+</p>

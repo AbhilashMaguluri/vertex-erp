@@ -16,7 +16,7 @@ class ParentRepository:
     async def get_student_communications(self, student_id: str) -> List[ParentCommunication]:
         query = (
             select(ParentCommunication)
-            .where(ParentCommunication.student_id == student_id, ParentCommunication.deleted_at.is_(None))
+            .where(ParentCommunication.student_id == student_id)
             .order_by(ParentCommunication.communication_date.desc())
         )
         res = await self.db.execute(query)

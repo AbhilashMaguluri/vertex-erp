@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parent Meeting Notification</title>
+<style>
+  body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa; }
+  .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+  .card { background: #ffffff; border-radius: 12px; padding: 40px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  .header { text-align: center; margin-bottom: 30px; }
+  .header h1 { color: #1a1a2e; font-size: 24px; margin: 0; }
+  .header .brand { color: #6366f1; font-weight: 700; }
+  .content { color: #374151; font-size: 15px; line-height: 1.7; }
+  .meeting-card { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 24px; margin: 20px 0; }
+  .meeting-card .label { font-size: 12px; text-transform: uppercase; color: #16a34a; font-weight: 600; letter-spacing: 1px; margin-bottom: 12px; }
+  .meeting-card .detail { margin: 8px 0; color: #374151; }
+  .meeting-card .detail strong { color: #1a1a2e; display: inline-block; width: 120px; }
+  .info { background: #e0f2fe; border-left: 4px solid #0284c7; padding: 12px 16px; border-radius: 4px; margin: 20px 0; font-size: 13px; color: #0c4a6e; }
+  .footer { text-align: center; margin-top: 30px; color: #9ca3af; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <div class="header">
+      <h1><span class="brand">{{ project_name }}</span></h1>
+      <p style="color: #6b7280; margin-top: 8px;">Parent Meeting Notification</p>
+    </div>
+    <div class="content">
+      <p>Dear {{ parent_name | default('Parent/Guardian') }},</p>
+      <p>A meeting has been scheduled regarding your ward <strong>{{ student_name }}</strong>.</p>
+      <div class="meeting-card">
+        <div class="label">📅 Meeting Details</div>
+        <div class="detail"><strong>Date:</strong> {{ meeting_date }}</div>
+        <div class="detail"><strong>Time:</strong> {{ meeting_time | default('To be confirmed') }}</div>
+        <div class="detail"><strong>Mode:</strong> {{ meeting_mode | default('In Person') }}</div>
+        <div class="detail"><strong>Counsellor:</strong> {{ counsellor_name | default('—') }}</div>
+        {% if agenda %}
+        <div class="detail"><strong>Agenda:</strong> {{ agenda }}</div>
+        {% endif %}
+      </div>
+      <div class="info">
+        ℹ️ Please confirm your availability by replying to this email or contacting the counselling office.
+      </div>
+      <p>We look forward to meeting you and discussing {{ student_name }}'s progress.</p>
+    </div>
+  </div>
+  <div class="footer">
+    <p>© {{ year | default('2026') }} {{ project_name }}. All rights reserved.</p>
+  </div>
+</div>
+</body>
+</html>

@@ -25,4 +25,20 @@ export const reportService = {
     const res = await api.get<ReportRecord[]>('/reports/history');
     return res.data;
   },
+
+  downloadReport: async (report: ReportRecord): Promise<void> => {
+    const res = await api.get(`/reports/${report.id}/download`, { responseType: 'blob' });
+    const disposition = res.headers['content-disposition'] as string | undefined;
+    const match = disposition?.match(/filename="?([^"]+)"?/);
+    const filename = match?.[1] || `report_${report.report_type.toLowerCase()}.${report.file_format.toLowerCase()}`;
+
+    const url = window.URL.createObjectURL(res.data as Blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };

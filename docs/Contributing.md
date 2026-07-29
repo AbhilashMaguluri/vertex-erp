@@ -1,6 +1,10 @@
 # Developer Contribution Guidelines
 
-## Getting Started
+This document outlines contribution workflows, code quality rules, and the 15-point Definition of Done (DoD) for developers contributing to SCMS.
+
+---
+
+## 1. Getting Started
 
 ### Prerequisites
 
@@ -8,19 +12,14 @@
 - Python 3.12+
 - PostgreSQL 16+
 
-### Setup Environment
+### Setup Local Workspace
 
-1. Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Install dependencies:
+1. **Install Dependencies**:
    ```bash
    npm install
    ```
 
-3. Backend setup:
+2. **Backend Virtual Environment**:
    ```bash
    cd apps/backend
    python -m venv venv
@@ -28,21 +27,33 @@
    pip install -r requirements.txt
    ```
 
-## Definition of Done (DoD)
+3. **Environment Configuration**:
+   Copy `apps/backend/.env.example` to `apps/backend/.env` and fill in required values (`DATABASE_URL`, `JWT_SECRET_KEY`, `CLOUDINARY_*`, `RESEND_API_KEY`, `EMAIL_FROM`).
 
-Every pull request or feature branch must meet the 15-point Definition of Done specified in PRD §52:
-1. **UI Implementation** matches design system components.
-2. **Backend API** documented with Pydantic schemas and OpenAPI tags.
-3. **Validation** on both client (Zod) and server (Pydantic).
-4. **Authorization** enforced via `require_permission()`.
-5. **Audit Logging** on all mutation endpoints.
-6. **Domain Events** emitted for timeline, analytics, and notification subscribers.
-7. **Page States** defined: loading, empty, error, success, no-results, unauthorized, forbidden.
-8. **Loading Skeletons** provided for all data fetches.
-9. **Empty States** provided with action CTA.
-10. **Tests** written (unit + integration).
-11. **Documentation** updated.
-12. **Responsive Design** verified on desktop, tablet, and mobile.
-13. **Accessibility** keyboard navigable and contrast checked.
-14. **Performance** budgets respected.
-15. **Feature Flags** checked if feature is conditional.
+4. **Migrations & Seeding**:
+   ```bash
+   alembic upgrade head
+   python -m app.scripts.seed
+   ```
+
+---
+
+## 2. Definition of Done (15-Point DoD)
+
+Every pull request or feature branch must meet the 15-point Definition of Done:
+
+1. **UI Implementation**: Matches design system components and Tailwind CSS tokens.
+2. **Backend API Documentation**: OpenAPI tags, return types, and Pydantic schemas defined.
+3. **Dual Validation**: Validated on both client (Zod) and server (Pydantic).
+4. **Authorization Rules**: Access enforced via `require_permission()` dependencies.
+5. **Audit Logging**: Mutations logged via `record_audit_log()`.
+6. **Domain Events**: Emitted to `EventBus` where appropriate.
+7. **Page States Covered**: Loading, empty, error, success, no-results, unauthorized, forbidden.
+8. **Loading Skeletons**: Provided for data fetches.
+9. **Empty States**: Rendered with action call-to-actions (CTAs).
+10. **Automated Testing**: Unit and integration tests written and passing (`pytest`).
+11. **Documentation Updated**: Relevant files in `/docs` updated.
+12. **Responsive Design**: Verified on desktop, tablet, and mobile breakpoints.
+13. **Accessibility**: Keyboard navigable and contrast checked.
+14. **Performance Budgets**: Caching and pagination rules respected.
+15. **Feature Flags**: Checked if feature is gated by `app/core/feature_flags.py`.

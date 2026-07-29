@@ -3,8 +3,10 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_db
 from app.core.permissions import require_permission
-from app.features.auth.dependencies import get_current_user
+from app.core.scoping import ensure_student_assigned_to_counsellor
+from app.features.auth.dependencies import get_current_active_user
 from app.features.auth.models import User
+from app.features.students.repository import StudentRepository
 from app.features.parents.schemas import (
     ParentCommunicationCreateRequest,
     ParentCommunicationResponse,
@@ -17,10 +19,11 @@ router = APIRouter(prefix="/parent-communication", tags=["Parent Communication"]
 @router.post("", response_model=ParentCommunicationResponse, status_code=status.HTTP_201_CREATED)
 async def log_parent_communication(
     data: ParentCommunicationCreateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
     _: bool = Depends(require_permission("parent_communication.create")),
     db: AsyncSession = Depends(get_async_db),
 ):
+    await ensure_student_assigned_to_counsellor(current_user, data.student_id, StudentRepository(db))
     service = ParentService(db)
     return await service.log_communication(data, str(current_user.id))
 
@@ -28,8 +31,10 @@ async def log_parent_communication(
 @router.get("/student/{student_id}", response_model=List[ParentCommunicationResponse])
 async def get_student_parent_communications(
     student_id: str,
+    current_user: User = Depends(get_current_active_user),
     _: bool = Depends(require_permission("parent_communication.read")),
     db: AsyncSession = Depends(get_async_db),
 ):
+    await ensure_student_assigned_to_counsellor(current_user, student_id, StudentRepository(db))
     service = ParentService(db)
     return await service.get_student_communications(student_id)

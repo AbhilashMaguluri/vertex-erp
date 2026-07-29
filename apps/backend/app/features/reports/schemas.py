@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
@@ -10,9 +11,9 @@ class ReportGenerateRequest(BaseModel):
 
 
 class ReportRecordResponse(BaseModel):
-    id: str
+    id: UUID | str
     report_type: str
-    generated_by_user_id: str
+    generated_by_user_id: UUID | str
     file_path: str
     file_format: str
     created_at: datetime

@@ -1,10 +1,8 @@
 from datetime import date
 from typing import List, Optional
-from sqlalchemy import select, func, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.attendance.models import AttendanceRecord, AttendanceCorrection
-from app.features.students.models import Student
-from app.features.admin.models import Subject
 
 
 class AttendanceRepository:
@@ -22,11 +20,22 @@ class AttendanceRepository:
         existing = res.scalar_one_or_none()
         if existing:
             existing.status = record.status
-            existing.recorded_by = record.recorded_by
+            existing.recorded_by_user_id = record.recorded_by_user_id
+            await self.db.flush()
             return existing
         else:
             self.db.add(record)
+            await self.db.flush()
             return record
+
+    async def get_record_by_id(self, record_id: str) -> Optional[AttendanceRecord]:
+        query = select(AttendanceRecord).where(AttendanceRecord.id == record_id)
+        res = await self.db.execute(query)
+        return res.scalar_one_or_none()
+
+    async def list_all_records(self) -> List[AttendanceRecord]:
+        res = await self.db.execute(select(AttendanceRecord))
+        return list(res.scalars().all())
 
     async def get_student_attendance_records(self, student_id: str) -> List[AttendanceRecord]:
         query = (

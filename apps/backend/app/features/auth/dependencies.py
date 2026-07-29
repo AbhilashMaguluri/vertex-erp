@@ -2,7 +2,7 @@ from typing import List
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_db
-from app.core.exceptions import AuthenticationError, ForbiddenError
+from app.core.exceptions import AuthenticationError, PasswordChangeRequiredError
 from app.core.security import decode_jwt_token
 from app.features.auth.models import User
 from app.features.auth.repository import AuthRepository
@@ -12,7 +12,7 @@ async def get_current_user_id(request: Request) -> str:
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise AuthenticationError("Missing or malformed Authorization header")
-    token = auth_header.split(" ")[1]
+    token = auth_header.split(" ", 1)[1]
     payload = decode_jwt_token(token)
     sub = payload.get("sub")
     if not sub:
@@ -33,11 +33,23 @@ async def get_current_user(
     return user
 
 
-async def get_current_user_permissions(
-    user: User = Depends(get_current_user),
-) -> List[str]:
+async def get_current_active_user(user: User = Depends(get_current_user)) -> User:
+    """Use for every endpoint outside the auth bootstrap flow (/auth/me,
+    /auth/change-password, /auth/logout, /auth/sessions*). Enforces the
+    server-side "cannot use the app until the temporary password is
+    changed" rule, independent of any frontend route guard."""
+    if user.force_password_change:
+        raise PasswordChangeRequiredError("You must change your temporary password before continuing.")
+    return user
+
+
+async def get_current_user_permissions(user: User = Depends(get_current_active_user)) -> List[str]:
     permissions = set()
     for role in user.roles:
         for perm in role.permissions:
             permissions.add(perm.name)
     return list(permissions)
+
+
+async def get_current_user_roles(user: User = Depends(get_current_active_user)) -> List[str]:
+    return [r.name for r in user.roles]

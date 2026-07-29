@@ -1,5 +1,6 @@
 from datetime import date, time, datetime
 from typing import Optional
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
@@ -19,9 +20,9 @@ class ParentCommunicationCreateRequest(BaseModel):
 
 
 class ParentCommunicationResponse(BaseModel):
-    id: str
-    student_id: str
-    counsellor_id: str
+    id: UUID | str
+    student_id: UUID | str
+    counsellor_id: UUID | str
     communication_date: date
     communication_time: Optional[time] = None
     mode: str
