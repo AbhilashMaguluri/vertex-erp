@@ -5,7 +5,18 @@
 import type { VertexRequest, VertexSSEvent, UIAction } from '../types/vertex';
 import { getAccessToken } from '@/shared/lib/axios';
 
-const VERTEX_API_URL = '/api/vertex/message';
+const getVertexApiUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.startsWith('http')) {
+    try {
+      const url = new URL(envUrl);
+      return `${url.origin}/api/vertex/message`;
+    } catch {
+      // Fallback if URL parsing fails
+    }
+  }
+  return '/api/vertex/message';
+};
 
 /**
  * Stream a message to Vertex and yield parsed SSE events.
@@ -27,7 +38,8 @@ export async function streamMessage(
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(VERTEX_API_URL, {
+    const targetUrl = getVertexApiUrl();
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(request),
