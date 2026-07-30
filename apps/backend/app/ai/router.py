@@ -30,6 +30,13 @@ _ACTION_MARKER = "__SSE_ACTION__"
 @router.post("/message")
 async def vertex_message(request: VertexRequest, raw_request: Request):
     """Accept a message to Vertex and stream the response as Server-Sent Events."""
+    request_id = getattr(raw_request.state, "request_id", "unknown")
+    logger.info(
+        "Vertex request [%s]: %d message(s), mode=%s",
+        request_id,
+        len(request.messages),
+        request.context.mode,
+    )
 
     async def event_stream():
         core = VertexCore()
@@ -47,7 +54,11 @@ async def vertex_message(request: VertexRequest, raw_request: Request):
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
         except Exception as exc:
-            logger.exception("Stream error in /api/vertex/message")
+            logger.exception(
+                "Stream error in /api/vertex/message [%s]: %s",
+                request_id,
+                exc,
+            )
             payload = json.dumps({
                 "type": "error",
                 "content": "An error occurred while generating the response. Please try again.",
@@ -63,3 +74,4 @@ async def vertex_message(request: VertexRequest, raw_request: Request):
             "X-Accel-Buffering": "no",
         },
     )
+

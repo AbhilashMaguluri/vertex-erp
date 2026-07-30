@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { VertexRequest, VertexSSEvent, UIAction } from '../types/vertex';
+import { getAccessToken } from '@/shared/lib/axios';
 
 const VERTEX_API_URL = '/api/vertex/message';
 
@@ -18,9 +19,17 @@ export async function streamMessage(
   signal?: AbortSignal,
 ): Promise<void> {
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    const token = getAccessToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(VERTEX_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(request),
       signal,
     });
