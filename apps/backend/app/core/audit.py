@@ -18,6 +18,14 @@ async def record_audit_log(
     """Appends an audit log row in the current transaction. Callers are
     responsible for committing (typically alongside the rest of the
     mutation) so the log only persists if the action actually succeeded."""
+    ua = (request.headers.get("user-agent") if request else None) or None
+    if ua and len(ua) > 500:
+        ua = ua[:500]
+
+    ip = (request.client.host if request and request.client else None)
+    if ip and len(ip) > 45:
+        ip = ip[:45]
+
     log = AuditLog(
         user_id=user.id if user else None,
         user_email=user.email if user else None,
@@ -26,9 +34,10 @@ async def record_audit_log(
         entity_type=entity_type,
         entity_id=str(entity_id),
         changes_json=changes,
-        ip_address=(request.client.host if request and request.client else None),
-        user_agent=(request.headers.get("user-agent") if request else None),
+        ip_address=ip,
+        user_agent=ua,
         request_id=(getattr(request.state, "request_id", None) if request else None),
     )
     db.add(log)
     await db.flush()
+

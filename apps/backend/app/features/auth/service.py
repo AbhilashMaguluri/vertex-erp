@@ -82,14 +82,22 @@ class AuthService:
         days = settings.REMEMBER_ME_REFRESH_TOKEN_EXPIRE_DAYS if remember_me else settings.REFRESH_TOKEN_EXPIRE_DAYS
         expires_at = datetime.now(timezone.utc) + timedelta(days=days)
 
+        ua = (request.headers.get("user-agent") if request else None) or None
+        if ua and len(ua) > 255:
+            ua = ua[:255]
+
+        ip = (request.client.host if request and request.client else None)
+        if ip and len(ip) > 45:
+            ip = ip[:45]
+
         session = RefreshToken(
             id=token_id,
             user_id=user.id,
             secret_hash=secret_hash,
             family_id=family_id,
             remember_me=remember_me,
-            user_agent=(request.headers.get("user-agent") if request else None) or None,
-            ip_address=(request.client.host if request and request.client else None),
+            user_agent=ua,
+            ip_address=ip,
             expires_at=expires_at,
         )
         await self.repo.create_refresh_token(session)
@@ -162,14 +170,22 @@ class AuthService:
             if token_entity.remember_me
             else settings.REFRESH_TOKEN_EXPIRE_DAYS
         )
+        ua = token_entity.user_agent
+        if ua and len(ua) > 255:
+            ua = ua[:255]
+
+        ip = (request.client.host if request and request.client else token_entity.ip_address)
+        if ip and len(ip) > 45:
+            ip = ip[:45]
+
         new_session = RefreshToken(
             id=new_token_id,
             user_id=user.id,
             secret_hash=secret_hash,
             family_id=token_entity.family_id,
             remember_me=token_entity.remember_me,
-            user_agent=token_entity.user_agent,
-            ip_address=(request.client.host if request and request.client else token_entity.ip_address),
+            user_agent=ua,
+            ip_address=ip,
             expires_at=datetime.now(timezone.utc) + timedelta(days=days),
         )
         await self.repo.create_refresh_token(new_session)
