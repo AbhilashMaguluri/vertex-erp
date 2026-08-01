@@ -2,7 +2,9 @@
 // VertexPanel — Dual Mode AI Assistant & Docked Sidebar Workspace
 // ---------------------------------------------------------------------------
 // Compact Floating Mode: Quick access assistant, anchored bottom-right.
-// Docked Sidebar Workspace Mode: Persistent right AI sidebar (Copilot / Cursor style).
+// Docked Workspace Mode: Persistent right AI sidebar (Copilot / Cursor style).
+// The floating FAB (VertexButton) is hidden when this panel is open.
+// Close action is in VertexHeader — no floating close button exists.
 // ---------------------------------------------------------------------------
 
 import { useEffect, useCallback, useRef, useState } from 'react';
@@ -143,6 +145,8 @@ export function VertexPanel({
               damping: 30,
               mass: 0.8,
             }}
+            role="dialog"
+            aria-label="Vertex AI assistant"
             className={cn(
               'flex flex-col overflow-hidden',
               'bg-card/98 backdrop-blur-2xl text-foreground',
@@ -154,7 +158,7 @@ export function VertexPanel({
               /* Desktop Positioning */
               isDocked
                 ? 'sm:fixed sm:right-0 sm:top-0 sm:bottom-0 sm:z-40 sm:border-l sm:border-border/80'
-                : 'sm:fixed sm:z-[52] sm:bottom-24 sm:right-6 sm:rounded-2xl sm:border sm:border-border/60',
+                : 'sm:fixed sm:z-[52] sm:bottom-6 sm:right-6 sm:rounded-2xl sm:border sm:border-border/60',
             )}
           >
             {/* Dynamic CSS Sizing for Desktop */}
