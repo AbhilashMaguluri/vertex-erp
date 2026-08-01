@@ -53,10 +53,15 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Middleware
-    setup_cors(app)
-    app.add_middleware(RequestIdMiddleware)
+    # Middleware. add_middleware prepends, so the LAST call is the outermost
+    # layer. CORS must wrap everything, otherwise responses produced above it
+    # (a rate-limit rejection, an unhandled error) reach the browser without
+    # Access-Control-Allow-Origin and surface as an opaque CORS failure instead
+    # of the real status. RequestId sits above the rate limiter so rejected
+    # requests still carry a request_id.
     app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RequestIdMiddleware)
+    setup_cors(app)
 
     # Error Handlers
     app.add_exception_handler(AppException, app_exception_handler)

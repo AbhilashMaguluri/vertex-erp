@@ -5,21 +5,36 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.config import settings
 from app.core.exceptions import AuthenticationError
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt only ever reads the first 72 bytes of a secret. passlib used to
+# truncate silently on our behalf; we do it explicitly here so hashes written by
+# the old passlib-backed code keep verifying, and so bcrypt >= 5 (which raises
+# instead of truncating) cannot turn a long password into a 500.
+_BCRYPT_MAX_BYTES = 72
+
+
+def _encode_secret(password: str) -> bytes:
+    return password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    if not plain_password or not hashed_password:
+        return False
+    try:
+        return bcrypt.checkpw(_encode_secret(plain_password), hashed_password.encode("utf-8"))
+    except ValueError:
+        # Stored value isn't a well-formed bcrypt hash. That's a failed login,
+        # not a server error.
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_encode_secret(password), bcrypt.gensalt()).decode("utf-8")
 
 
 # Backwards-friendly alias used in a couple of call sites

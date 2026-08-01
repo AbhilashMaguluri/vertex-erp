@@ -6,7 +6,7 @@ This document documents the security controls, authentication mechanisms, token 
 
 ## 1. Authentication & Token Security Controls
 
-1. **Password Hashing**: User passwords are stored strictly as salted Bcrypt hashes generated via `passlib[bcrypt]`. Plaintext passwords are never saved to logs or databases.
+1. **Password Hashing**: User passwords are stored strictly as salted Bcrypt hashes generated via the `bcrypt` library. Plaintext passwords are never saved to logs or databases.
 2. **Access Token Lifespan**: Short-lived JWT tokens (default 15 minutes) signed with `HS256`. Stored strictly in memory by the React application state (`AuthContext`). Access tokens are never written to `localStorage` or `sessionStorage` to mitigate XSS risks.
 3. **Refresh Token Transport**: Transported as an `HttpOnly`, `SameSite=Lax` cookie. Only a cryptographic hash of the refresh token secret is stored in the database (`refresh_tokens` table).
 4. **Token Family Theft Detection**: Every refresh operation rotates the token pair inside the family (`family_id`). If an already-used or revoked refresh token is presented, the system revokes the entire token family, invalidating all sessions for that device.

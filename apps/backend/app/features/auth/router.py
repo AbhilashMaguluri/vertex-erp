@@ -48,7 +48,9 @@ async def logout(
 ):
     service = AuthService(db)
     await service.logout(refresh_token, response)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    # Returns None on purpose: returning a fresh Response here would replace the
+    # injected one and drop the refresh-cookie deletion header the service just
+    # wrote, leaving the (now server-side revoked) cookie sitting in the browser.
 
 
 @router.get("/me", response_model=UserProfileResponse)
