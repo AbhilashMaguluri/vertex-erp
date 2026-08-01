@@ -85,3 +85,56 @@ Ensure your frontend development origin (`http://localhost:5173`) is listed in `
 BACKEND_CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
 Restart the Uvicorn server after updating `.env`.
+
+---
+
+### Issue 5: `ValueError: password cannot be longer than 72 bytes` (passlib + bcrypt)
+
+**Symptom**:
+Login returns `500 Internal Server Error` with traceback containing:
+```
+File ".../passlib/handlers/bcrypt.py", line 655, in _calc_checksum
+    hash = _bcrypt.hashpw(secret, config)
+ValueError: password cannot be longer than 72 bytes, truncate manually if necessary
+```
+
+**Cause**:
+`passlib` 1.7.4 (last release 2020) internally uses a >72-byte test password to probe the bcrypt backend for bug detection. `bcrypt >= 5` rejects this with `ValueError` instead of silently truncating.
+
+**Solution**:
+This issue has been resolved in v2.2.0. The `passlib` dependency was removed entirely. `app/core/security.py` now uses `bcrypt` directly with explicit 72-byte truncation. Ensure you are on the latest commit and that `passlib` does not appear in `requirements.txt`. If upgrading from an older version:
+```bash
+pip uninstall passlib
+pip install -r requirements.txt
+```
+
+---
+
+### Issue 6: Render Backend Returns `502 Bad Gateway` or Takes 30+ Seconds
+
+**Symptom**:
+First request after a period of inactivity returns a timeout or `502` error.
+
+**Cause**:
+Render free-tier services spin down after 15 minutes of inactivity. The first inbound request triggers a cold start, which includes installing dependencies and booting the Python process.
+
+**Solution**:
+- Wait 30–60 seconds for the cold start to complete and retry.
+- For production use, upgrade to a paid Render plan to keep the service always-on.
+- Alternatively, set up an external health check ping (e.g., UptimeRobot) hitting `/api/v1/health/live` every 10 minutes to keep the service warm.
+
+---
+
+### Issue 7: Stale Code on Render After Local Fix
+
+**Symptom**:
+You've fixed a bug locally but the deployed version on Render still shows the old behavior.
+
+**Solution**:
+Ensure your changes are committed **and pushed** to the remote branch that Render is tracking:
+```bash
+git add -A
+git commit -m "fix: description"
+git push origin main
+```
+Render auto-deploys on push. Verify the deploy completed in the Render dashboard under "Events".

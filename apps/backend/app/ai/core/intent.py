@@ -1,182 +1,330 @@
-"""Intent detection — classifies user requests into actionable categories.
+"""Stage 4 — Intent Detection.
 
-Fast path: keyword/pattern matching for obvious intents:
-  - Profile Updates (Student-Owned Data)
-  - Academic Corrections (Institution-Owned Data)
-  - Navigation, Theme, Logout, Data, Reports.
+Classifies every request into a capability category. The Planner consumes only
+:class:`DetectedIntent`, never the detector, so the implementation can be
+swapped — rules today, a fine-tuned classifier later — without the Planner
+changing a line.
 
-Slow path: LLM classification for ambiguous requests.
+Three implementations ship here:
+
+    RuleBasedIntentDetector  fast, deterministic, no network
+    LLMIntentDetector        structured classification for open phrasing
+    HybridIntentDetector     rules first, LLM only when rules are unsure
+
+The Goal already carries most of the signal, so detection reads the goal
+rather than re-parsing the sentence from scratch. That keeps the two stages
+consistent: an intent that contradicts the goal is a bug, not a tie to break.
 """
 
 from __future__ import annotations
 
+import json
+import logging
 import re
-from typing import Optional, Dict
+from abc import ABC, abstractmethod
+from typing import Dict, Optional
 
 from app.ai.models.context import VertexContext
+from app.ai.models.goal import Goal, GoalTarget, GoalType
 from app.ai.models.intent import DetectedIntent, IntentCategory
+from app.ai.models.message import ChatMessage, MessageRole
 from app.ai.providers.base import AIProvider
 
-
-# -------------------------------------------------------------------------
-# Pattern rules — ordered by specificity. First match wins.
-# -------------------------------------------------------------------------
-
-# Student-Owned Data Update Patterns
-_PROFILE_UPDATE_PATTERNS = [
-    (r"\b(?:change|update|edit|set|modify|fix)\s+(?:my\s+)?name\s+(?:to|as|=|:)?\s*(.+)", "name"),
-    (r"\b(?:change|update|edit|set|modify|fix)\s+(?:my\s+)?(?:phone|mobile|number|contact)\s+(?:to|as|=|:)?\s*(.+)", "phone"),
-    (r"\b(?:change|update|edit|set|modify|fix)\s+(?:my\s+)?(?:email|mail)\s+(?:to|as|=|:)?\s*(.+)", "email"),
-    (r"\b(?:change|update|edit|set|modify|fix)\s+(?:my\s+)?(?:address|location|city)\s+(?:to|as|=|:)?\s*(.+)", "address"),
-    (r"\b(?:change|update|edit|set|modify|fix)\s+(?:my\s+)?(?:parent|guardian|father|mother)\s+(?:to|as|=|:)?\s*(.+)", "parent_info"),
-    (r"\b(?:change|update|edit|set|modify|fix)\s+(?:my\s+)?emergency\s+(?:contact|number)\s+(?:to|as|=|:)?\s*(.+)", "emergency_contact"),
-    (r"\b(?:change|update|edit|set|modify|fix)\s+(?:my\s+)?(?:medical|health)\s+(?:info|details)\s*(.*)", "medical_info"),
-    (r"\b(?:change|update|edit|set|modify|fix)\s+(?:my\s+)?(?:photo|avatar|picture|profile\s+pic)\s*(.*)", "photo"),
-    (r"\b(?:change|update|edit|set|modify)\s+(?:my\s+)?profile\b", "profile"),
-]
-
-# Institution-Owned Data Correction Patterns
-_CORRECTION_PATTERNS = [
-    (r"\b(?:my\s+)?attendance\s+(?:is\s+)?(?:incorrect|wrong|mistake|error|missing|not\s+updated|low|faulty)\b", "attendance"),
-    (r"\b(?:my\s+)?(?:marks|grade|grades|sgpa|cgpa|credits|backlogs?)\s+(?:is|are)\s+(?:incorrect|wrong|mistake|error|missing|faulty)\b", "marks"),
-    (r"\b(?:request|apply\s+for|open|raise)\s+(?:an?\s+)?academic\s+correction\b", "academic_correction"),
-    (r"\b(?:correct|fix)\s+(?:my\s+)?(?:attendance|sgpa|cgpa|marks|grades|credits|backlog)\b", "institution_data"),
-]
-
-_LOGOUT_PATTERNS = [
-    (r"\b(?:log\s*out|sign\s*out|sign\s*off|exit|quit)\b", None),
-]
-
-_THEME_PATTERNS = [
-    (r"\b(?:change|switch|set|toggle|turn\s+on|enable|activate)\b.*\b(?:theme|mode|dark\s*mode|light\s*mode|dark|light|system)\b", None),
-    (r"\b(?:dark|light|system)\s*(?:mode|theme)\b", None),
-]
-
-_NAVIGATION_PATTERNS = [
-    (r"\b(?:open|go\s+to|navigate\s+to|take\s+me\s+to|show\s+me|switch\s+to|visit)\s+(.+)", None),
-]
-
-_DATA_PATTERNS = [
-    (r"\b(?:show|get|fetch|find|search|look\s*up|retrieve|what\s+is|what\s+are)\b.*\b(?:student|attendance|marks|grades|schedule|timetable|data|record|report)\b", None),
-]
-
-_REPORT_PATTERNS = [
-    (r"\b(?:generate|create|build|export|download)\b.*\b(?:report|pdf|csv|excel|summary)\b", None),
-]
+logger = logging.getLogger("vertex.intent")
 
 
-def _extract_page_name(message: str) -> str:
-    for pattern, _ in _NAVIGATION_PATTERNS:
-        m = re.search(pattern, message, re.IGNORECASE)
-        if m and m.group(1):
-            return m.group(1).strip().rstrip(".,!?")
-    cleaned = re.sub(
-        r"\b(?:open|go\s+to|navigate\s+to|take\s+me\s+to|show\s+me|please|can\s+you|the|page)\b",
-        "",
-        message,
-        flags=re.IGNORECASE,
-    ).strip().rstrip(".,!?")
-    return cleaned or message
+class IntentDetector(ABC):
+    """Contract every detector implements."""
+
+    @abstractmethod
+    async def detect(
+        self, message: str, goal: Goal, context: VertexContext
+    ) -> DetectedIntent:
+        ...  # pragma: no cover
 
 
-def _extract_theme(message: str) -> str:
-    lower = message.lower()
-    if "dark" in lower:
-        return "dark"
-    if "light" in lower:
-        return "light"
-    if "system" in lower:
-        return "system"
-    return "dark"
+# --------------------------------------------------------------------------
+# Rules
+# --------------------------------------------------------------------------
+
+_ATTENDANCE_QUERY = re.compile(
+    r"\battendance\b.*\b(?:percentage|percent|%|status|summary|report|record|"
+    r"how\s+much|how\s+many|what)\b|"
+    r"\b(?:what|show|check|tell)\b.*\battendance\b",
+    re.IGNORECASE,
+)
+
+_ACADEMIC_QUERY = re.compile(
+    r"\b(?:sgpa|cgpa|marks?|grades?|backlogs?|credits?|results?|transcript)\b",
+    re.IGNORECASE,
+)
+
+_UI_DIALOG = re.compile(r"\b(?:open|close)\s+(?:the\s+)?(?:dialog|modal|popup)\b", re.IGNORECASE)
 
 
-class IntentDetector:
-    """Classifies user messages into intent categories."""
+class RuleBasedIntentDetector(IntentDetector):
+    """Deterministic classification derived from the structured goal."""
 
-    def __init__(self, provider: Optional[AIProvider] = None) -> None:
+    async def detect(
+        self, message: str, goal: Goal, context: VertexContext
+    ) -> DetectedIntent:
+        entities: Dict = dict(goal.parameters)
+        entities.setdefault("raw_message", message)
+
+        # Resolve *whose* record the request is about while the context is
+        # still in hand. "Show attendance" means the caller's own record for a
+        # student, and the student on screen for staff — so the Planner never
+        # has to ask a question the application can already answer.
+        subject = context.workspace.student_id or context.user.student_id
+        if subject:
+            entities.setdefault("subject_student_id", subject)
+
+        action = str(goal.parameters.get("action") or "")
+
+        # ----- Application state ------------------------------------------
+        if goal.target is GoalTarget.APPLICATION_STATE:
+            if action == "setTheme":
+                return self._intent(
+                    IntentCategory.THEME_CHANGE, 0.95, entities,
+                    "Goal targets application theme",
+                )
+            if action == "navigate":
+                return self._intent(
+                    IntentCategory.NAVIGATION, 0.93, entities,
+                    "Goal targets page navigation",
+                )
+            if action == "logout":
+                return self._intent(
+                    IntentCategory.WORKFLOW, 0.96, {**entities, "workflow": "logout"},
+                    "Goal targets session termination",
+                )
+            if _UI_DIALOG.search(message):
+                return self._intent(
+                    IntentCategory.UI_ACTION, 0.85, entities, "Dialog control phrasing"
+                )
+            return self._intent(
+                IntentCategory.UI_ACTION, 0.7, entities,
+                "Application-state goal with no specific UI action",
+            )
+
+        # ----- Writes ------------------------------------------------------
+        if goal.type is GoalType.WORKFLOW and goal.target in (
+            GoalTarget.ATTENDANCE,
+            GoalTarget.ACADEMIC_RECORD,
+        ):
+            return self._intent(
+                IntentCategory.ACADEMIC_CORRECTION, 0.94, entities,
+                "Goal is a correction workflow on an institution-owned record",
+            )
+
+        if goal.type is GoalType.ACTION and goal.target is GoalTarget.STUDENT_PROFILE:
+            return self._intent(
+                IntentCategory.PROFILE_UPDATE, 0.94, entities,
+                "Goal mutates a student-owned profile field",
+            )
+
+        # ----- Reads --------------------------------------------------------
+        if goal.target is GoalTarget.STUDENT_DIRECTORY:
+            return self._intent(
+                IntentCategory.STUDENT_SEARCH, 0.88, entities,
+                "Goal searches the student directory",
+            )
+
+        if goal.target is GoalTarget.ATTENDANCE or _ATTENDANCE_QUERY.search(message):
+            return self._intent(
+                IntentCategory.ATTENDANCE_QUERY, 0.9, entities,
+                "Goal reads attendance data",
+            )
+
+        if goal.target is GoalTarget.ACADEMIC_RECORD or _ACADEMIC_QUERY.search(message):
+            return self._intent(
+                IntentCategory.ACADEMIC_QUERY, 0.88, entities,
+                "Goal reads academic records",
+            )
+
+        if goal.target is GoalTarget.REPORT:
+            return self._intent(
+                IntentCategory.REPORT_GENERATION, 0.85, entities,
+                "Goal generates a report",
+            )
+
+        if goal.type is GoalType.CLARIFICATION:
+            return self._intent(
+                IntentCategory.UNKNOWN, 0.8,
+                {**entities, "missing": goal.missing_information},
+                "Goal is under-specified — clarification required",
+            )
+
+        if goal.target is GoalTarget.STUDENT_PROFILE:
+            return self._intent(
+                IntentCategory.DATA_RETRIEVAL, 0.82, entities,
+                "Goal reads the caller's own profile",
+            )
+
+        # ----- Everything else ------------------------------------------------
+        confidence = 0.85 if goal.type is GoalType.CONVERSATION else 0.55
+        return self._intent(
+            IntentCategory.CONVERSATION, confidence, entities,
+            "No actionable capability matched — conversational reply",
+        )
+
+    @staticmethod
+    def _intent(
+        category: IntentCategory, confidence: float, entities: Dict, reasoning: str
+    ) -> DetectedIntent:
+        return DetectedIntent(
+            category=category,
+            confidence=confidence,
+            entities=entities,
+            reasoning=reasoning,
+            source="rules",
+        )
+
+
+# --------------------------------------------------------------------------
+# LLM
+# --------------------------------------------------------------------------
+
+class LLMIntentDetector(IntentDetector):
+    """Structured classification for phrasing the rules do not cover.
+
+    Asks only for a label. The model never sees this as a chance to answer the
+    user, and its output is validated against the enum before use.
+    """
+
+    _PROMPT = """\
+Classify the user's request into exactly one category. Reply with JSON only:
+{"category": "<category>", "confidence": 0.0-1.0, "entities": {}, "reasoning": "<short>"}
+
+Categories:
+- conversation        : greetings, thanks, general chat, advice
+- navigation          : go to / open a page
+- theme_change        : switch light/dark/system appearance
+- ui_action           : other interface control (dialogs, toasts)
+- profile_update      : change the user's OWN personal details (name, phone, address, guardian)
+- academic_correction : an institution record is wrong (attendance, marks, SGPA, backlogs)
+- attendance_query    : asking about attendance figures
+- academic_query      : asking about marks, SGPA, CGPA, backlogs, results
+- student_search      : find a student record
+- data_retrieval      : other ERP data lookup
+- report_generation   : produce or export a report
+- workflow            : logout or another multi-step process
+- unknown             : cannot tell
+
+Extract entities only if literally present (field, value, page, mode). Never invent them.
+"""
+
+    def __init__(self, provider: AIProvider) -> None:
         self._provider = provider
 
-    async def detect(self, message: str, context: VertexContext) -> DetectedIntent:
-        lower = message.strip().lower()
+    async def detect(
+        self, message: str, goal: Goal, context: VertexContext
+    ) -> DetectedIntent:
+        try:
+            messages = [
+                ChatMessage(role=MessageRole.SYSTEM, content=self._PROMPT),
+                ChatMessage(
+                    role=MessageRole.SYSTEM,
+                    content=(
+                        f"Caller role: {context.user.role or 'guest'}. "
+                        f"Page: {context.page.page}. "
+                        f"Derived goal: {goal.summary()}"
+                    ),
+                ),
+                ChatMessage(role=MessageRole.USER, content=message),
+            ]
+            raw = await self._provider.complete(messages, temperature=0.0, max_tokens=250)
+            payload = self._parse(raw)
+            if not payload:
+                raise ValueError("no JSON object in classifier output")
 
-        # 1. Student-Owned Profile Data Update
-        for pattern, field in _PROFILE_UPDATE_PATTERNS:
-            m = re.search(pattern, lower, re.IGNORECASE)
-            if m:
-                extracted_val = m.group(1).strip().rstrip(".,!?") if m.lastindex and m.lastindex >= 1 else ""
-                return DetectedIntent(
-                    category=IntentCategory.UPDATE_PROFILE,
-                    confidence=0.96,
-                    entities={"field": field, "value": extracted_val, "raw_message": message},
-                    reasoning=f"Matched student profile update pattern for field '{field}'",
-                )
+            category = IntentCategory(str(payload.get("category", "unknown")).lower())
+            entities = payload.get("entities") or {}
+            return DetectedIntent(
+                category=category,
+                confidence=min(float(payload.get("confidence", 0.6)), 0.9),
+                entities={
+                    **{k: v for k, v in entities.items() if v},
+                    "raw_message": message,
+                },
+                reasoning=str(payload.get("reasoning", "LLM classification"))[:200],
+                source="llm",
+            )
+        except (ValueError, KeyError, TypeError) as exc:
+            logger.warning("LLM intent classification unusable: %s", exc)
+        except Exception as exc:
+            logger.warning("LLM intent classification failed: %s", exc)
 
-        # 2. Institution-Owned Data Correction Request
-        for pattern, section in _CORRECTION_PATTERNS:
-            if re.search(pattern, lower, re.IGNORECASE):
-                return DetectedIntent(
-                    category=IntentCategory.ACADEMIC_CORRECTION,
-                    confidence=0.96,
-                    entities={"section": section, "raw_message": message},
-                    reasoning=f"Matched institution data academic correction pattern for section '{section}'",
-                )
-
-        # 3. Logout
-        for pattern, _ in _LOGOUT_PATTERNS:
-            if re.search(pattern, lower):
-                return DetectedIntent(
-                    category=IntentCategory.WORKFLOW,
-                    confidence=0.98,
-                    entities={"workflow": "logout"},
-                    reasoning="Matched logout keyword pattern",
-                )
-
-        # 4. Theme
-        for pattern, _ in _THEME_PATTERNS:
-            if re.search(pattern, lower):
-                theme = _extract_theme(message)
-                return DetectedIntent(
-                    category=IntentCategory.UI_ACTION,
-                    confidence=0.95,
-                    entities={"action": "setTheme", "mode": theme},
-                    reasoning="Matched theme/mode keyword pattern",
-                )
-
-        # 5. Navigation
-        for pattern, _ in _NAVIGATION_PATTERNS:
-            if re.search(pattern, lower):
-                page = _extract_page_name(message)
-                return DetectedIntent(
-                    category=IntentCategory.NAVIGATION,
-                    confidence=0.92,
-                    entities={"page": page},
-                    reasoning=f"Matched navigation pattern, extracted page: {page}",
-                )
-
-        # 6. Report generation
-        for pattern, _ in _REPORT_PATTERNS:
-            if re.search(pattern, lower):
-                return DetectedIntent(
-                    category=IntentCategory.REPORT_GENERATION,
-                    confidence=0.85,
-                    entities={},
-                    reasoning="Matched report generation pattern",
-                )
-
-        # 7. Data retrieval
-        for pattern, _ in _DATA_PATTERNS:
-            if re.search(pattern, lower):
-                return DetectedIntent(
-                    category=IntentCategory.DATA_RETRIEVAL,
-                    confidence=0.80,
-                    entities={},
-                    reasoning="Matched data retrieval pattern",
-                )
-
-        # Default: Conversation
         return DetectedIntent(
-            category=IntentCategory.CONVERSATION,
-            confidence=0.70,
-            entities={},
-            reasoning="No action pattern matched — treating as conversation",
+            category=IntentCategory.UNKNOWN,
+            confidence=0.0,
+            entities={"raw_message": message},
+            reasoning="LLM classification unavailable",
+            source="fallback",
         )
+
+    @staticmethod
+    def _parse(raw: str) -> Optional[Dict]:
+        text = (raw or "").strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text)
+        start, end = text.find("{"), text.rfind("}")
+        if start == -1 or end <= start:
+            return None
+        try:
+            parsed = json.loads(text[start : end + 1])
+            return parsed if isinstance(parsed, dict) else None
+        except json.JSONDecodeError:
+            return None
+
+
+# --------------------------------------------------------------------------
+# Hybrid — the default
+# --------------------------------------------------------------------------
+
+class HybridIntentDetector(IntentDetector):
+    """Rules first; escalate to the LLM only when the rules are unsure.
+
+    Obvious requests ("switch to dark mode") never pay for a round-trip, and
+    open phrasing still gets classified rather than falling into a generic
+    chat reply.
+    """
+
+    ESCALATION_THRESHOLD = 0.7
+
+    def __init__(self, provider: Optional[AIProvider] = None) -> None:
+        self._rules = RuleBasedIntentDetector()
+        self._llm = LLMIntentDetector(provider) if provider is not None else None
+
+    async def detect(
+        self, message: str, goal: Goal, context: VertexContext
+    ) -> DetectedIntent:
+        rule_intent = await self._rules.detect(message, goal, context)
+
+        if rule_intent.confidence >= self.ESCALATION_THRESHOLD or self._llm is None:
+            return rule_intent
+
+        llm_intent = await self._llm.detect(message, goal, context)
+        if llm_intent.confidence > rule_intent.confidence:
+            llm_intent.alternatives = [rule_intent.category.value]
+            # Entities the rules extracted are literal matches; keep them
+            # alongside whatever the model found.
+            llm_intent.entities = {**rule_intent.entities, **llm_intent.entities}
+            return llm_intent
+
+        rule_intent.alternatives = [llm_intent.category.value]
+        return rule_intent
+
+
+def create_default_detector(provider: Optional[AIProvider] = None) -> IntentDetector:
+    """Factory used by the pipeline. One place to change the default."""
+    return HybridIntentDetector(provider)
+
+
+__all__ = [
+    "IntentDetector",
+    "RuleBasedIntentDetector",
+    "LLMIntentDetector",
+    "HybridIntentDetector",
+    "create_default_detector",
+]

@@ -11,18 +11,24 @@ c:\vertex-erp\
 ├── apps/
 │   ├── backend/                        # FastAPI Asynchronous Python Application
 │   │   ├── alembic/                    # Database migration environment
-│   │   │   ├── versions/               # 12 Alembic revision scripts
+│   │   │   ├── versions/               # 13 Alembic revision scripts
 │   │   │   ├── env.py                  # Async Alembic runner
 │   │   │   └── script.py.mako          # Migration template
 │   │   ├── app/                        # Application Source Package
 │   │   │   ├── ai/                     # Vertex AI Engine & Chatbot
 │   │   │   │   ├── agents/             # Task subagents & workflows
-│   │   │   │   ├── core/               # Vertex core engine & SSE handlers
+│   │   │   │   ├── core/               # Vertex core engine, intent, planning, guardrails, evaluation
 │   │   │   │   ├── memory/             # Session context & conversation state
 │   │   │   │   ├── models/             # AI request/response Pydantic models
+│   │   │   │   ├── observability/      # AI request tracing & metrics
+│   │   │   │   ├── prompts/            # System prompt builder & templates
 │   │   │   │   ├── providers/          # Groq / Llama provider integrations
+│   │   │   │   ├── quality/            # Response quality scoring
 │   │   │   │   ├── rag/                # Document RAG & context loaders
-│   │   │   │   ├── tools/              # Agent database lookup tools
+│   │   │   │   ├── services/           # AI service orchestration
+│   │   │   │   ├── tools/              # Agent tools (profile, records, corrections, UI)
+│   │   │   │   ├── utils/              # AI utility functions
+│   │   │   │   ├── workflows/          # Multi-step AI workflow definitions
 │   │   │   │   └── router.py           # Endpoint: POST /api/vertex/message (SSE)
 │   │   │   ├── api/                    # Core API Gateway
 │   │   │   │   └── v1/health.py        # Liveness & Readiness health probes
@@ -114,7 +120,7 @@ c:\vertex-erp\
 ├── docs/                               # Documentation Suite
 │   ├── architecture.md                 # System topology & Clean Architecture
 │   ├── api.md                          # 158 API endpoints reference
-│   ├── database.md                     # 48 Database models & 12 migrations
+│   ├── database.md                     # 48+ Database models & 13 migrations
 │   ├── authentication.md               # Auth flow, JWT, & RBAC matrix
 │   ├── environment.md                  # Environment variables table
 │   ├── project-structure.md            # Monorepo directory map

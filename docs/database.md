@@ -1,6 +1,6 @@
 # Database Models & Migration Schema Documentation
 
-This document documents the 48 SQLAlchemy ORM database models, constraints, indexes, base mixins, and complete 12-migration history of the Student Counselling Management System (SCMS).
+This document documents the 48+ SQLAlchemy ORM database models, constraints, indexes, base mixins, and complete 13-migration history of the Student Counselling Management System (SCMS).
 
 ---
 
@@ -79,7 +79,7 @@ All database entities in SCMS inherit from SQLAlchemy `Base` and standard mixins
 
 ---
 
-## 3. Alembic Migration History (12 Migrations)
+## 3. Alembic Migration History (13 Migrations)
 
 All migrations are located under `apps/backend/alembic/versions`:
 
@@ -95,3 +95,4 @@ All migrations are located under `apps/backend/alembic/versions`:
 10. `2026_07_26_2100-e4f5a6b7c8d9_office_import_module.py`: Creation of `import_batches` and `import_records` tables.
 11. `2026_07_26_2200-e5f6a7b8c9d0_student_360_workspace.py`: Workspace tab state schema.
 12. `2026_07_28_0000-f6a7b8c9d0e1_academic_correction_requests.py`: Creation of academic correction request and log tables.
+13. `2026_07_31_0000-a7b8c9d0e1f2_vertex_interactions.py`: Creation of Vertex AI interaction logging tables for conversation history and tool usage tracking.
