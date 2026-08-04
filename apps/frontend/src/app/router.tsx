@@ -13,15 +13,19 @@ import { UnauthorizedPage } from '@/features/auth/pages/UnauthorizedPage';
 import { SessionExpiredPage } from '@/features/auth/pages/SessionExpiredPage';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { AcademicConfigPage } from '@/features/admin/pages/AcademicConfigPage';
+import { AssessmentConfigPage } from '@/features/admin/pages/AssessmentConfigPage';
 import { UserManagementPage } from '@/features/admin/pages/UserManagementPage';
 import { OfficeImportPage } from '@/features/admin/pages/OfficeImportPage';
+import { MembershipImportPage } from '@/features/admin/pages/MembershipImportPage';
 import { StudentWorkspacePage } from '@/features/students/pages/StudentWorkspacePage';
 import { MyProfilePage } from '@/features/students/pages/MyProfilePage';
 import { MyStudentsPage } from '@/features/students/pages/MyStudentsPage';
 import { SessionsPage } from '@/features/counselling/pages/SessionsPage';
 import { NewSessionPage } from '@/features/counselling/pages/NewSessionPage';
 import { RecordAttendancePage } from '@/features/attendance/pages/RecordAttendancePage';
+import { AttendanceImportPage } from '@/features/attendance/pages/AttendanceImportPage';
 import { MarksEntryPage } from '@/features/academics/pages/MarksEntryPage';
+import { MarksImportPage } from '@/features/academics/pages/MarksImportPage';
 import { ParentCommunicationPage } from '@/features/parents/pages/ParentCommunicationPage';
 import { NotificationCenterPage } from '@/features/notifications/pages/NotificationCenterPage';
 import { ReportsPage } from '@/features/reports/pages/ReportsPage';
@@ -122,6 +126,7 @@ const router = createBrowserRouter([
                 children: [
                   { path: '/attendance', element: <RecordAttendancePage /> },
                   { path: '/attendance/record', element: <RecordAttendancePage /> },
+                  { path: '/attendance/import', element: <AttendanceImportPage /> },
                 ],
               },
 
@@ -131,6 +136,7 @@ const router = createBrowserRouter([
                 children: [
                   { path: '/academics', element: <MarksEntryPage /> },
                   { path: '/academics/marks', element: <MarksEntryPage /> },
+                  { path: '/academics/import-marks', element: <MarksImportPage /> },
                 ],
               },
 
@@ -155,6 +161,7 @@ const router = createBrowserRouter([
                 children: [
                   { path: '/admin/users', element: <UserManagementPage /> },
                   { path: '/admin/imports', element: <OfficeImportPage /> },
+                  { path: '/admin/membership-import', element: <MembershipImportPage /> },
                   // The module used to live here as a CSV/UUID importer.
                   // Kept so bookmarks and older links still land somewhere.
                   { path: '/admin/bulk-import', element: <Navigate to="/admin/imports" replace /> },
@@ -162,7 +169,10 @@ const router = createBrowserRouter([
               },
               {
                 element: <PermissionGuard permission="department.manage" />,
-                children: [{ path: '/admin/academic-config', element: <AcademicConfigPage /> }],
+                children: [
+                  { path: '/admin/academic-config', element: <AcademicConfigPage /> },
+                  { path: '/admin/assessment-config', element: <AssessmentConfigPage /> },
+                ],
               },
               {
                 element: <PermissionGuard permission="audit.read" />,

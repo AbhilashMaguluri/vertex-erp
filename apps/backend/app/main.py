@@ -16,11 +16,14 @@ from app.api.v1.health import router as health_router
 from app.features.auth.router import router as auth_router
 from app.features.admin.router import router as admin_router
 from app.features.imports.router import router as imports_router
+from app.features.membership_import.router import router as membership_import_router
 from app.features.students.router import router as students_router
 from app.features.students.profile_router import router as student_profile_router
 from app.features.counselling.router import router as counselling_router
 from app.features.attendance.router import router as attendance_router
+from app.features.attendance_import.router import router as attendance_import_router
 from app.features.academics.router import router as academics_router
+from app.features.marks_import.router import router as marks_import_router
 from app.features.parents.router import router as parents_router
 from app.features.notifications.router import router as notifications_router
 from app.features.reports.router import router as reports_router
@@ -75,6 +78,8 @@ def create_app() -> FastAPI:
     # Registered after admin_router: both live under /admin, and the import
     # router owns the whole /admin/imports subtree.
     app.include_router(imports_router, prefix=settings.API_V1_STR)
+    # Membership Import — three-column format (Start Roll, End Roll, Counselor Email)
+    app.include_router(membership_import_router, prefix=settings.API_V1_STR)
     # Registered BEFORE students_router: the profile router owns the literal
     # /students/me/... paths, and students_router has a /students/{student_id}
     # catch-all that would otherwise swallow "me" as an id.
@@ -82,7 +87,9 @@ def create_app() -> FastAPI:
     app.include_router(students_router, prefix=settings.API_V1_STR)
     app.include_router(counselling_router, prefix=settings.API_V1_STR)
     app.include_router(attendance_router, prefix=settings.API_V1_STR)
+    app.include_router(attendance_import_router, prefix=settings.API_V1_STR)
     app.include_router(academics_router, prefix=settings.API_V1_STR)
+    app.include_router(marks_import_router, prefix=settings.API_V1_STR)
     app.include_router(parents_router, prefix=settings.API_V1_STR)
     app.include_router(notifications_router, prefix=settings.API_V1_STR)
     app.include_router(reports_router, prefix=settings.API_V1_STR)

@@ -12,7 +12,7 @@ import { Badge } from '@/shared/components/ui/Badge';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/shared/components/ui/Table';
 import { Skeleton } from '@/shared/components/ui/Skeleton';
 import { EmptyState } from '@/shared/components/ui/EmptyState';
-import { CheckCircle2, UserCheck, UserX, ShieldAlert, HeartPulse, Users, Calendar } from 'lucide-react';
+import { CheckCircle2, UserCheck, UserX, ShieldAlert, HeartPulse, Users, Calendar, UploadCloud } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 
 type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'ON_DUTY' | 'MEDICAL_LEAVE';
@@ -107,11 +107,16 @@ export function RecordAttendancePage() {
         title="Record Subject Attendance"
         subtitle="Select department, section, and subject to mark the active class roster"
         actions={
-          roster && roster.length > 0 ? (
-            <Button variant="outline" size="sm" onClick={markAllPresent}>
-              <UserCheck className="mr-1.5 h-4 w-4 text-emerald-600" /> Mark All Present
+          <div className="flex gap-2">
+            {roster && roster.length > 0 && (
+              <Button variant="outline" size="sm" onClick={markAllPresent}>
+                <UserCheck className="mr-1.5 h-4 w-4 text-emerald-600" /> Mark All Present
+              </Button>
+            )}
+            <Button size="sm" onClick={() => navigate('/attendance/import')}>
+              <UploadCloud className="mr-1.5 h-4 w-4" /> Bulk Excel Import
             </Button>
-          ) : undefined
+          </div>
         }
       />
 

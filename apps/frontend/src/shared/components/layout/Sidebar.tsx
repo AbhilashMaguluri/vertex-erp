@@ -22,6 +22,9 @@ import {
   Sparkles,
   UserCheck,
   FileCheck,
+  Link2,
+  UploadCloud,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 
@@ -140,7 +143,9 @@ export function Sidebar({ role, isCollapsed, onToggleCollapse }: SidebarProps) {
             items: [
               { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
               { label: 'Record Attendance', to: '/attendance', icon: Calendar },
+              { label: 'Import Attendance', to: '/attendance/import', icon: UploadCloud },
               { label: 'Faculty Marks Entry', to: '/academics/marks', icon: Award },
+              { label: 'Import Marks', to: '/academics/import-marks', icon: UploadCloud },
             ],
           },
         ];
@@ -174,8 +179,11 @@ export function Sidebar({ role, isCollapsed, onToggleCollapse }: SidebarProps) {
               { label: 'Correction Requests', to: '/student-360/corrections', icon: FileCheck },
               { label: 'User Directory', to: '/admin/users', icon: Users },
               { label: 'Academic Config', to: '/admin/academic-config', icon: BookOpen },
+              { label: 'Assessment Config', to: '/admin/assessment-config', icon: SlidersHorizontal },
               { label: 'Counsellor Reach-Out', to: '/reach-out', icon: PhoneCall },
               { label: 'Office Import', to: '/admin/imports', icon: FileSpreadsheet },
+              { label: 'Membership Import', to: '/admin/membership-import', icon: Link2 },
+              { label: 'Attendance Import', to: '/attendance/import', icon: UploadCloud },
               { label: 'Reports Catalog', to: '/reports', icon: FileText },
               { label: 'Security Audit Logs', to: '/admin/audit-logs', icon: Activity },
             ],
