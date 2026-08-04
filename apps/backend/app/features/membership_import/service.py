@@ -20,7 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.audit import record_audit_log
-from app.core.enums import AuditAction
+from app.core.enums import AuditAction, TimelineEventType
+from app.core.events import DomainEvent, event_bus
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.database import AsyncSessionLocal
 from app.features.admin.models import Section
@@ -506,6 +507,23 @@ class MembershipImportService:
         # Assign batch_id to records
         for r in all_records:
             r.batch_id = batch.id
+
+        # Publish domain event for counsellor assignments
+        if memberships_created > 0 or memberships_updated > 0:
+            try:
+                await event_bus.publish(
+                    DomainEvent(
+                        type=TimelineEventType.COUNSELLOR_ASSIGNED.value,
+                        actor_id=actor_id,
+                        metadata={
+                            "section_id": config.section_id,
+                            "semester_id": config.semester_id,
+                            "count": memberships_created + memberships_updated,
+                        },
+                    )
+                )
+            except Exception as exc:
+                logger.warning("Failed to publish counsellor assigned event: %s", exc)
 
         await self.repo.add_records(all_records)
         await record_audit_log(
