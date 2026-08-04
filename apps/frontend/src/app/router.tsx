@@ -17,6 +17,8 @@ import { AssessmentConfigPage } from '@/features/admin/pages/AssessmentConfigPag
 import { UserManagementPage } from '@/features/admin/pages/UserManagementPage';
 import { OfficeImportPage } from '@/features/admin/pages/OfficeImportPage';
 import { MembershipImportPage } from '@/features/admin/pages/MembershipImportPage';
+import { DeptAdminManagementPage } from '@/features/admin/pages/DeptAdminManagementPage';
+import { DeptAdminDashboardPage } from '@/features/dept_admin/pages/DeptAdminDashboardPage';
 import { StudentWorkspacePage } from '@/features/students/pages/StudentWorkspacePage';
 import { MyProfilePage } from '@/features/students/pages/MyProfilePage';
 import { MyStudentsPage } from '@/features/students/pages/MyStudentsPage';
@@ -160,8 +162,10 @@ const router = createBrowserRouter([
                 element: <PermissionGuard permission="user.manage" />,
                 children: [
                   { path: '/admin/users', element: <UserManagementPage /> },
+                  { path: '/admin/dept-admins', element: <DeptAdminManagementPage /> },
                   { path: '/admin/imports', element: <OfficeImportPage /> },
                   { path: '/admin/membership-import', element: <MembershipImportPage /> },
+                  { path: '/dept-admin/dashboard', element: <DeptAdminDashboardPage /> },
                   // The module used to live here as a CSV/UUID importer.
                   // Kept so bookmarks and older links still land somewhere.
                   { path: '/admin/bulk-import', element: <Navigate to="/admin/imports" replace /> },

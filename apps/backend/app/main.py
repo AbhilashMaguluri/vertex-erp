@@ -24,6 +24,7 @@ from app.features.attendance.router import router as attendance_router
 from app.features.attendance_import.router import router as attendance_import_router
 from app.features.academics.router import router as academics_router
 from app.features.marks_import.router import router as marks_import_router
+from app.features.dept_admin.router import router as dept_admin_router
 from app.features.parents.router import router as parents_router
 from app.features.notifications.router import router as notifications_router
 from app.features.reports.router import router as reports_router
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
     app.include_router(attendance_import_router, prefix=settings.API_V1_STR)
     app.include_router(academics_router, prefix=settings.API_V1_STR)
     app.include_router(marks_import_router, prefix=settings.API_V1_STR)
+    app.include_router(dept_admin_router, prefix=settings.API_V1_STR)
     app.include_router(parents_router, prefix=settings.API_V1_STR)
     app.include_router(notifications_router, prefix=settings.API_V1_STR)
     app.include_router(reports_router, prefix=settings.API_V1_STR)

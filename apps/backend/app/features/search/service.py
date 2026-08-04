@@ -1,6 +1,7 @@
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.scoping import is_assignment_scoped_counsellor
+from app.shared.policies.department_policy import DepartmentAccessPolicy
 from app.features.auth.models import User
 from app.features.auth.repository import AuthRepository
 from app.features.students.repository import StudentRepository
@@ -35,6 +36,8 @@ class SearchService:
                     s for s in students
                     if any(a.counsellor_id == user.id and a.effective_to is None for a in s.counsellor_assignments)
                 ]
+            if DepartmentAccessPolicy.is_department_admin(user) and user.department_id:
+                students = [s for s in students if str(s.department_id) == str(user.department_id)]
             for s in students:
                 results.append(
                     SearchResultItem(
@@ -48,6 +51,8 @@ class SearchService:
 
         if "user.manage" in permissions:
             users, _total = await self.auth_repo.list_users(search=query, offset=0, limit=_MAX_RESULTS_PER_TYPE)
+            if DepartmentAccessPolicy.is_department_admin(user) and user.department_id:
+                users = [u for u in users if str(u.department_id) == str(user.department_id)]
             for u in users:
                 results.append(
                     SearchResultItem(

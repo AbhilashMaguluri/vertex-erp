@@ -25,6 +25,7 @@ import {
   Link2,
   UploadCloud,
   SlidersHorizontal,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 
@@ -151,15 +152,17 @@ export function Sidebar({ role, isCollapsed, onToggleCollapse }: SidebarProps) {
         ];
 
       case UserRole.HOD:
+      case 'DEPARTMENT_ADMIN':
         return [
           {
             groupLabel: 'Department Desk',
             items: [
-              { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-              { label: 'Students', to: '/students', icon: Users },
-              { label: 'Correction Requests', to: '/student-360/corrections', icon: FileCheck },
-              { label: 'Reach-Out Config', to: '/reach-out', icon: PhoneCall },
-              { label: 'Reports Catalog', to: '/reports', icon: FileText },
+              { label: 'Dept Dashboard', to: '/dept-admin/dashboard', icon: LayoutDashboard },
+              { label: 'Students', to: '/students', icon: GraduationCap },
+              { label: 'Attendance Import', to: '/attendance/import', icon: UploadCloud },
+              { label: 'Marks Import', to: '/academics/import-marks', icon: Award },
+              { label: 'Membership Import', to: '/admin/membership-import', icon: Link2 },
+              { label: 'Department Reports', to: '/reports', icon: FileText },
             ],
           },
         ];
@@ -178,6 +181,7 @@ export function Sidebar({ role, isCollapsed, onToggleCollapse }: SidebarProps) {
               { label: 'Students', to: '/students', icon: GraduationCap },
               { label: 'Correction Requests', to: '/student-360/corrections', icon: FileCheck },
               { label: 'User Directory', to: '/admin/users', icon: Users },
+              { label: 'Dept Administrators', to: '/admin/dept-admins', icon: ShieldCheck },
               { label: 'Academic Config', to: '/admin/academic-config', icon: BookOpen },
               { label: 'Assessment Config', to: '/admin/assessment-config', icon: SlidersHorizontal },
               { label: 'Counsellor Reach-Out', to: '/reach-out', icon: PhoneCall },
