@@ -171,6 +171,8 @@ export function MarksImportPage() {
           onDone={() => {
             setStep(5);
             queryClient.invalidateQueries({ queryKey: ['admin', 'marks-imports', 'history'] });
+            queryClient.invalidateQueries({ queryKey: ['academics'] });
+            queryClient.invalidateQueries({ queryKey: ['reports'] });
           }}
           onFailed={(message) => {
             setRunError(message);

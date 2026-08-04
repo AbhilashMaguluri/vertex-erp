@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional, Set, Tuple
 
-from app.features.attendance_import.roll_range_service import (
+from app.shared.utils.roll_number import (
     normalise_roll_number,
     validate_roll_number_format,
 )

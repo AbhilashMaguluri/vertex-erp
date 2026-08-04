@@ -185,6 +185,8 @@ export function MembershipImportPage() {
             setStep(5);
             queryClient.invalidateQueries({ queryKey: ['admin', 'membership-imports', 'history'] });
             queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+            queryClient.invalidateQueries({ queryKey: ['admin', 'students'] });
+            queryClient.invalidateQueries({ queryKey: ['counselling'] });
           }}
           onFailed={(message) => {
             setRunError(message);

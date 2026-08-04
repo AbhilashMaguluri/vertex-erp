@@ -183,6 +183,8 @@ export function AttendanceImportPage() {
           onDone={() => {
             setStep(5);
             queryClient.invalidateQueries({ queryKey: ['admin', 'attendance-imports', 'history'] });
+            queryClient.invalidateQueries({ queryKey: ['attendance'] });
+            queryClient.invalidateQueries({ queryKey: ['reports'] });
           }}
           onFailed={(message) => {
             setRunError(message);
