@@ -114,3 +114,68 @@ async def test_ui_tool_get_current_theme_reads_live_state():
     result = await ui_tool.execute("getCurrentTheme", {}, exec_ctx)
     assert result.success is True
     assert result.data == {"theme": "system", "resolved": "dark"}
+
+
+@pytest.mark.asyncio
+async def test_generic_theme_phrases_and_toggle_resolution():
+    goal_builder = GoalBuilder()
+    intent_detector = RuleBasedIntentDetector()
+    ownership_resolver = DataOwnershipResolver()
+    planner = Planner()
+    registry = get_registry()
+
+    phrases = [
+        "switch theme",
+        "change theme",
+        "toggle theme",
+        "switch appearance",
+        "change appearance",
+        "toggle appearance",
+    ]
+
+    context = VertexContext(
+        user=UserContext(is_authenticated=True),
+        page=PageContext(page="dashboard", state={"theme": "dark", "resolvedTheme": "dark"}),
+        mode="student",
+    )
+
+    for phrase in phrases:
+        goal = await goal_builder.build(phrase, context)
+        assert goal.target == GoalTarget.APPLICATION_STATE
+        assert goal.parameters.get("action") == "toggleTheme"
+
+        intent = await intent_detector.detect(phrase, goal, context)
+        assert intent.category == IntentCategory.THEME_CHANGE
+
+        ownership = ownership_resolver.resolve(goal, context)
+        plan = await planner.plan(goal, intent, ownership, context, registry)
+        assert plan.action == PlanAction.EXECUTE_TOOL
+        assert plan.tool_name == "ui"
+        assert plan.tool_action == "toggleTheme"
+
+
+@pytest.mark.asyncio
+async def test_ui_tool_toggle_theme_execution():
+    ui_tool = UITool()
+
+    # From dark to light
+    ctx_dark = VertexContext(
+        user=UserContext(is_authenticated=True),
+        page=PageContext(page="dashboard", state={"theme": "dark", "resolvedTheme": "dark"}),
+        mode="student",
+    )
+    res_dark = await ui_tool.execute("toggleTheme", {}, ToolExecutionContext(vertex=ctx_dark, request_id="t1"))
+    assert res_dark.success is True
+    assert res_dark.data == {"mode": "light", "previous": "dark"}
+    assert res_dark.ui_action == {"type": "setTheme", "mode": "light"}
+
+    # From light to dark
+    ctx_light = VertexContext(
+        user=UserContext(is_authenticated=True),
+        page=PageContext(page="dashboard", state={"theme": "light", "resolvedTheme": "light"}),
+        mode="student",
+    )
+    res_light = await ui_tool.execute("toggleTheme", {}, ToolExecutionContext(vertex=ctx_light, request_id="t2"))
+    assert res_light.success is True
+    assert res_light.data == {"mode": "dark", "previous": "light"}
+    assert res_light.ui_action == {"type": "setTheme", "mode": "dark"}

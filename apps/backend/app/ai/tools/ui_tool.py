@@ -130,6 +130,12 @@ class UITool(VertexTool):
                 owner=DataOwner.APPLICATION,
             ),
             ToolAction(
+                name="toggleTheme",
+                description="Toggle between light and dark interface theme based on live UI state",
+                parameters={},
+                owner=DataOwner.APPLICATION,
+            ),
+            ToolAction(
                 name="getCurrentTheme",
                 description="Retrieve the active interface theme (light, dark or system) from live UI state",
                 parameters={},
@@ -244,6 +250,25 @@ class UITool(VertexTool):
             success=True,
             message=f"The active theme preference is {theme_pref} (currently rendering {resolved}).",
             data={"theme": theme_pref, "resolved": resolved},
+        )
+
+    async def _do_toggleTheme(
+        self, params: Dict, context: ToolExecutionContext
+    ) -> ToolResult:
+        live_state = context.vertex.page.state or {}
+        theme_pref = str(live_state.get("theme", "")).strip().lower()
+        resolved = str(live_state.get("resolvedTheme", "")).strip().lower()
+
+        if theme_pref == "dark" or resolved == "dark":
+            target_mode = "light"
+        else:
+            target_mode = "dark"
+
+        return ToolResult(
+            success=True,
+            message=f"Theme toggled to {target_mode} mode.",
+            data={"mode": target_mode, "previous": theme_pref or resolved},
+            ui_action={"type": "setTheme", "mode": target_mode},
         )
 
     async def _do_showToast(

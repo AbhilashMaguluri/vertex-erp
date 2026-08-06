@@ -98,6 +98,13 @@ _THEME_QUERY = re.compile(
     re.IGNORECASE,
 )
 
+_GENERIC_THEME_PHRASES = re.compile(
+    r"\b(?:switch|change|toggle)\s+(?:the\s+)?(?:theme|appearance|mode)\b|"
+    r"\b(?:theme|appearance|mode)\s+(?:switch|change|toggle)\b|"
+    r"\b(?:toggle\s+theme|toggle\s+appearance)\b",
+    re.IGNORECASE,
+)
+
 _NAV_VERBS = re.compile(
     r"\b(?:open|go\s+to|navigate\s+to|take\s+me\s+to|switch\s+to|visit|"
     r"bring\s+up|jump\s+to)\b",
@@ -293,6 +300,18 @@ class GoalBuilder:
                 success_criteria=[f"Theme set to {theme}"],
                 confidence=0.95,
                 reasoning=f"Matched theme phrasing, resolved mode='{theme}'",
+            )
+
+        if _GENERIC_THEME_PHRASES.search(text):
+            return Goal(
+                type=GoalType.ACTION,
+                target=GoalTarget.APPLICATION_STATE,
+                statement="Toggle or switch the application theme",
+                raw_message=message,
+                parameters={"action": "toggleTheme"},
+                success_criteria=["Theme toggled"],
+                confidence=0.95,
+                reasoning="Matched generic theme switching phrasing",
             )
 
         # ----- Navigation ---------------------------------------------------

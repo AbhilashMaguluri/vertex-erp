@@ -73,6 +73,16 @@ class Planner:
                     reasoning=f"UI capability '{step.tool_action}' resolved from the registry",
                     **base,
                 )
+            if intent.category is IntentCategory.THEME_CHANGE and (
+                registry.resolve("ui", "setTheme") is not None
+                or registry.resolve("ui", "toggleTheme") is not None
+            ):
+                return ExecutionPlan(
+                    action=PlanAction.CLARIFY,
+                    clarification_message="Would you like to switch to Dark Mode or Light Mode?",
+                    reasoning="Generic theme request requiring mode preference",
+                    **base,
+                )
             return self._no_capability(base, "that interface action")
 
         # ----- 3. Student-owned write → update it now ----------------------
@@ -207,10 +217,24 @@ class Planner:
     ) -> Optional[PlanStep]:
         action = str(goal.parameters.get("action") or "")
 
+        if action == "toggleTheme":
+            step = self._resolve(registry, "ui", "toggleTheme", {})
+            if step:
+                return step
+            mode = goal.parameters.get("mode") or intent.entities.get("mode") or ""
+            if mode:
+                return self._resolve(registry, "ui", "setTheme", {"mode": mode})
+            return None
+
         if action == "setTheme":
-            return self._resolve(
-                registry, "ui", "setTheme", {"mode": goal.parameters.get("mode", "")}
-            )
+            mode = goal.parameters.get("mode") or intent.entities.get("mode") or ""
+            if mode:
+                return self._resolve(registry, "ui", "setTheme", {"mode": mode})
+            toggle_step = self._resolve(registry, "ui", "toggleTheme", {})
+            if toggle_step:
+                return toggle_step
+            return None
+
         if action == "getCurrentTheme":
             return self._resolve(registry, "ui", "getCurrentTheme", {})
         if action == "navigate":
@@ -224,7 +248,9 @@ class Planner:
             mode = goal.parameters.get("mode") or intent.entities.get("mode") or ""
             if mode:
                 return self._resolve(registry, "ui", "setTheme", {"mode": mode})
-            return self._resolve(registry, "ui", "getCurrentTheme", {})
+            toggle_step = self._resolve(registry, "ui", "toggleTheme", {})
+            if toggle_step:
+                return toggle_step
 
         if intent.category is IntentCategory.UI_ACTION:
             dialog = intent.entities.get("dialog")
