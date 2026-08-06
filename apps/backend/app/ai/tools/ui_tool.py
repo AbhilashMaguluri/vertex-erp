@@ -130,6 +130,12 @@ class UITool(VertexTool):
                 owner=DataOwner.APPLICATION,
             ),
             ToolAction(
+                name="getCurrentTheme",
+                description="Retrieve the active interface theme (light, dark or system) from live UI state",
+                parameters={},
+                owner=DataOwner.APPLICATION,
+            ),
+            ToolAction(
                 name="showToast",
                 description="Show a notification toast",
                 parameters={
@@ -210,11 +216,34 @@ class UITool(VertexTool):
                 success=False,
                 error=f"'{mode or 'that'}' isn't a theme I recognise. Use light, dark or system.",
             )
+
+        live_state = context.vertex.page.state or {}
+        live_theme = str(live_state.get("theme", "")).strip().lower()
+
+        if live_theme and live_theme == mode:
+            return ToolResult(
+                success=True,
+                message=f"The interface theme is already set to {mode} mode.",
+                data={"mode": mode, "already_active": True},
+            )
+
         return ToolResult(
             success=True,
             message=f"Theme switched to {mode} mode.",
             data={"mode": mode},
             ui_action={"type": "setTheme", "mode": mode},
+        )
+
+    async def _do_getCurrentTheme(
+        self, params: Dict, context: ToolExecutionContext
+    ) -> ToolResult:
+        live_state = context.vertex.page.state or {}
+        theme_pref = str(live_state.get("theme", "system")).strip().lower()
+        resolved = str(live_state.get("resolvedTheme", "light")).strip().lower()
+        return ToolResult(
+            success=True,
+            message=f"The active theme preference is {theme_pref} (currently rendering {resolved}).",
+            data={"theme": theme_pref, "resolved": resolved},
         )
 
     async def _do_showToast(

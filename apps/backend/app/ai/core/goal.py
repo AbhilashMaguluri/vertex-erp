@@ -86,8 +86,15 @@ _FIELD_TARGETS: Dict[str, GoalTarget] = {
 }
 
 _THEME_WORDS = re.compile(
-    r"\b(dark|light|night|day|system)\s*(?:mode|theme)\b|"
-    r"\b(?:mode|theme)\s+to\s+(dark|light|system)\b",
+    r"\b(?:dark|light|night|day|system)\s*(?:mode|theme|appearance)\b|"
+    r"\b(?:mode|theme|appearance)\s+(?:to\s+)?(dark|light|system)\b|"
+    r"\b(?:enable|activate|switch\s+to|change\s+to|set\s+to|use|turn\s+on)\s+(dark|light|system)\b",
+    re.IGNORECASE,
+)
+
+_THEME_QUERY = re.compile(
+    r"\b(?:what|which|get|check|show|current)\b.*\b(?:theme|mode|appearance)\b|"
+    r"\b(?:theme|mode|appearance)\s+(?:is\s+)?(?:active|current|set|selected)\b",
     re.IGNORECASE,
 )
 
@@ -263,8 +270,20 @@ class GoalBuilder:
             )
 
         # ----- Theme --------------------------------------------------------
+        if _THEME_QUERY.search(text):
+            return Goal(
+                type=GoalType.QUESTION,
+                target=GoalTarget.APPLICATION_STATE,
+                statement="Retrieve the active application theme from live UI state",
+                raw_message=message,
+                parameters={"action": "getCurrentTheme"},
+                success_criteria=["Current theme retrieved from live UI state"],
+                confidence=0.95,
+                reasoning="Matched theme query phrasing",
+            )
+
         theme = _extract_theme(text)
-        if _THEME_WORDS.search(text) and theme:
+        if (_THEME_WORDS.search(text) or theme) and theme:
             return Goal(
                 type=GoalType.ACTION,
                 target=GoalTarget.APPLICATION_STATE,

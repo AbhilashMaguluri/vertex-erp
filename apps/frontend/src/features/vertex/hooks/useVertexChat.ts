@@ -14,6 +14,7 @@ import { streamMessage } from '../services/vertexApi';
 import { usePageContext } from './usePageContext';
 import { useVertexActions } from './useVertexActions';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { useTheme } from '@/shared/theme/ThemeContext';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -59,6 +60,9 @@ export function useVertexChat(): UseVertexChatReturn {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Live Theme State
+  const { theme: themePref, resolved: resolvedTheme } = useTheme();
+
   // Auth state
   const { status: authStatus, user: authUser } = useAuth();
   const isAuthenticated = authStatus === 'authenticated' && authUser !== null;
@@ -83,11 +87,18 @@ export function useVertexChat(): UseVertexChatReturn {
             permissions: authUser.permissions,
           }
         : {},
-      page: pageContext,
+      page: {
+        ...pageContext,
+        state: {
+          ...(pageContext.params || {}),
+          theme: themePref,
+          resolvedTheme,
+        },
+      },
       mode,
       timestamp: new Date().toISOString(),
     };
-  }, [isAuthenticated, authUser, pageContext, mode]);
+  }, [isAuthenticated, authUser, pageContext, mode, themePref, resolvedTheme]);
 
   // Cleanup on unmount
   useEffect(() => {

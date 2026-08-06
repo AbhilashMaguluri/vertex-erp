@@ -12,3 +12,9 @@ def test_system_prompt_knowledge_boundaries():
     assert "How is VertexERP hosted?" in SYSTEM_PROMPT
     assert "Who built this?" in SYSTEM_PROMPT
     assert "I don't have access to VertexERP's internal implementation details" in SYSTEM_PROMPT
+
+
+def test_system_prompt_tool_confirmation_rule():
+    """Ensure SYSTEM_PROMPT requires tool confirmation before claiming action success."""
+    assert "Tool confirmation required" in SYSTEM_PROMPT
+    assert "Never claim success, assume a theme change" in SYSTEM_PROMPT

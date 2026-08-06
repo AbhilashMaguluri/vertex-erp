@@ -39,6 +39,7 @@ export interface PageContext {
   page: string;
   studentId?: string;
   params?: Record<string, string>;
+  state?: Record<string, unknown>;
 }
 
 export type VertexMode =
@@ -78,6 +79,7 @@ export interface VertexRequest {
 export type UIActionType =
   | 'navigate'
   | 'setTheme'
+  | 'getCurrentTheme'
   | 'showToast'
   | 'logout'
   | 'openDialog'

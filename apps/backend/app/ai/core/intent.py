@@ -83,7 +83,7 @@ class RuleBasedIntentDetector(IntentDetector):
 
         # ----- Application state ------------------------------------------
         if goal.target is GoalTarget.APPLICATION_STATE:
-            if action == "setTheme":
+            if action in ("setTheme", "getCurrentTheme"):
                 return self._intent(
                     IntentCategory.THEME_CHANGE, 0.95, entities,
                     "Goal targets application theme",

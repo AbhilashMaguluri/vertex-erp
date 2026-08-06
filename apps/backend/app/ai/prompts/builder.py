@@ -242,15 +242,15 @@ def _capabilities_block(registry: ToolRegistry) -> str:
     """What Vertex can actually do, so it neither over- nor under-promises."""
     lines = [
         "## Your Capabilities",
-        "These actions are wired up and are performed FOR the user, automatically:",
+        "These actions are supported by dedicated tools in VertexERP:",
     ]
     for tool in registry.get_all_descriptions():
         actions = ", ".join(a["name"] for a in tool["actions"])
         lines.append(f"- **{tool['name']}** — {tool['description']} ({actions})")
     lines.append(
-        "\nWhen a request matches one of these, it has already been executed "
-        "before you were asked to reply. Never instruct the user to do it "
-        "manually. If something is genuinely outside this list, say so plainly "
-        "and point to the screen that handles it."
+        "\nIMPORTANT: You must ONLY state that an action was performed or a setting "
+        "was changed if a Completed Action result is explicitly provided in this turn. "
+        "Never claim, assume, or simulate a UI action or theme change without receiving "
+        "confirmation from a tool."
     )
     return "\n".join(lines)

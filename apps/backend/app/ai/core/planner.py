@@ -211,12 +211,20 @@ class Planner:
             return self._resolve(
                 registry, "ui", "setTheme", {"mode": goal.parameters.get("mode", "")}
             )
+        if action == "getCurrentTheme":
+            return self._resolve(registry, "ui", "getCurrentTheme", {})
         if action == "navigate":
             return self._resolve(
                 registry, "ui", "navigate", {"page": goal.parameters.get("page", "")}
             )
         if action == "logout":
             return self._resolve(registry, "ui", "logout", {})
+
+        if intent.category is IntentCategory.THEME_CHANGE:
+            mode = goal.parameters.get("mode") or intent.entities.get("mode") or ""
+            if mode:
+                return self._resolve(registry, "ui", "setTheme", {"mode": mode})
+            return self._resolve(registry, "ui", "getCurrentTheme", {})
 
         if intent.category is IntentCategory.UI_ACTION:
             dialog = intent.entities.get("dialog")
